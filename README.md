@@ -15,6 +15,9 @@ go run .
 
 - `AGENT_URL` — base URL of the agent service (default `http://localhost:8000`)
 - `ROUTER_ADDR` — listen address (default `:8080`)
+- `REQUIRE_AUTH` — when `true`, `/invoke` requires a valid Cognito `id_token` cookie (re-verified here against Cognito's JWKS, independent of whatever CloudFront's Lambda@Edge already checked) and enforces the per-user daily token limit. Defaults off, so local dev needs no Cognito setup at all.
+- `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`, `AWS_REGION` — required when `REQUIRE_AUTH=true`, used to verify the JWT (issuer/audience) and fetch its JWKS.
+- `USAGE_TABLE_NAME`, `DAILY_TOKEN_LIMIT` — required when `REQUIRE_AUTH=true`: the DynamoDB table tracking each user's daily Bedrock token usage, and the cap (tokens/user/UTC day) before `/invoke` starts returning `429`. The router watches the agent's SSE stream for a `usage` event to record actual usage after each request.
 
 ### Docker
 
@@ -25,7 +28,7 @@ docker run --rm -p 8080:8080 -e AGENT_URL=http://host.docker.internal:8000 ironc
 
 ## API
 
-`POST /invoke` — body `{ "message": string }`, proxies to the agent and streams back `text/event-stream` unchanged.
+`POST /invoke` — body `{ "message": string }`, proxies to the agent and streams back `text/event-stream` unchanged. Returns `401` if `REQUIRE_AUTH` is on and the `id_token` cookie is missing/invalid, or `429` if the caller is already at today's token limit.
 
 `GET /health` — liveness check.
 

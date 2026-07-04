@@ -57,6 +57,44 @@ func TestHandleInvoke_MissingMessage(t *testing.T) {
 	}
 }
 
+func TestHandleInvoke_UnauthorizedWithoutCookie(t *testing.T) {
+	requireAuth = true
+	defer func() { requireAuth = false }()
+
+	req := httptest.NewRequest(http.MethodPost, "/invoke", strings.NewReader(`{"message":"hi"}`))
+	rec := httptest.NewRecorder()
+
+	handleInvoke(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status 401, got %d", rec.Code)
+	}
+}
+
+func TestTrackUsageEvent(t *testing.T) {
+	lines := []string{
+		"event: token\n",
+		"data: {\"text\":\"hi\"}\n",
+		"\n",
+		"event: usage\n",
+		"data: {\"input_tokens\":12,\"output_tokens\":34}\n",
+		"\n",
+		"event: done\n",
+		"data: {}\n",
+		"\n",
+	}
+
+	var sseEvent string
+	var usage usageEvent
+	for _, l := range lines {
+		sseEvent, usage = trackUsageEvent([]byte(l), sseEvent, usage)
+	}
+
+	if usage.InputTokens != 12 || usage.OutputTokens != 34 {
+		t.Fatalf("expected usage {12, 34}, got %+v", usage)
+	}
+}
+
 func TestHandleInvoke_ProxiesToAgent(t *testing.T) {
 	agent := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/invoke" {

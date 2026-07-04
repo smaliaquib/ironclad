@@ -3,12 +3,18 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
+
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
 type invokeRequest struct {
@@ -26,6 +32,29 @@ func main() {
 	addr := os.Getenv("ROUTER_ADDR")
 	if addr == "" {
 		addr = ":8080"
+	}
+
+	requireAuth, _ = strconv.ParseBool(os.Getenv("REQUIRE_AUTH"))
+	if requireAuth {
+		region := os.Getenv("AWS_REGION")
+		userPoolID := os.Getenv("COGNITO_USER_POOL_ID")
+		clientID := os.Getenv("COGNITO_CLIENT_ID")
+		if err := initAuth(userPoolID, clientID, region); err != nil {
+			log.Fatalf("auth init failed: %v", err)
+		}
+
+		usageTable = os.Getenv("USAGE_TABLE_NAME")
+		dailyTokenLimit, _ = strconv.Atoi(os.Getenv("DAILY_TOKEN_LIMIT"))
+		if dailyTokenLimit == 0 {
+			dailyTokenLimit = 10000
+		}
+		cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(region))
+		if err != nil {
+			log.Fatalf("aws config load failed: %v", err)
+		}
+		dynamoClient = dynamodb.NewFromConfig(cfg)
+
+		log.Printf("auth enabled: user pool %s, daily token limit %d", userPoolID, dailyTokenLimit)
 	}
 
 	mux := http.NewServeMux()
@@ -59,6 +88,24 @@ func handleInvoke(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
+	}
+
+	var userID string
+	if requireAuth {
+		var err error
+		userID, err = verifyIDToken(r)
+		if err != nil {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		underLimit, err := checkUnderLimit(r.Context(), userID)
+		if err != nil {
+			log.Printf("usage check failed: %v", err)
+		} else if !underLimit {
+			http.Error(w, `{"error":"daily token limit exceeded"}`, http.StatusTooManyRequests)
+			return
+		}
 	}
 
 	var req invokeRequest
@@ -99,6 +146,8 @@ func handleInvoke(w http.ResponseWriter, r *http.Request) {
 
 	flusher, ok := w.(http.Flusher)
 	reader := bufio.NewReader(resp.Body)
+	var sseEvent string
+	var usage usageEvent
 	for {
 		line, err := reader.ReadBytes('\n')
 		if len(line) > 0 {
@@ -106,6 +155,7 @@ func handleInvoke(w http.ResponseWriter, r *http.Request) {
 			if ok {
 				flusher.Flush()
 			}
+			sseEvent, usage = trackUsageEvent(line, sseEvent, usage)
 		}
 		if err != nil {
 			if err != io.EOF {
@@ -113,5 +163,39 @@ func handleInvoke(w http.ResponseWriter, r *http.Request) {
 			}
 			break
 		}
+	}
+
+	if requireAuth && usage.InputTokens+usage.OutputTokens > 0 {
+		if err := recordUsage(context.Background(), userID, usage.InputTokens+usage.OutputTokens); err != nil {
+			log.Printf("recording usage failed: %v", err)
+		}
+	}
+}
+
+type usageEvent struct {
+	InputTokens  int `json:"input_tokens"`
+	OutputTokens int `json:"output_tokens"`
+}
+
+// trackUsageEvent watches the SSE stream being proxied through for an
+// "event: usage" block and parses its "data:" line - the agent emits this
+// right before "done" so the router can record actual Bedrock token usage
+// without the agent needing to know about users or limits. sseEvent/usage
+// are threaded through by the caller since this is called once per line.
+func trackUsageEvent(line []byte, sseEvent string, usage usageEvent) (string, usageEvent) {
+	text := strings.TrimRight(string(line), "\r\n")
+	switch {
+	case strings.HasPrefix(text, "event:"):
+		return strings.TrimSpace(strings.TrimPrefix(text, "event:")), usage
+	case strings.HasPrefix(text, "data:") && sseEvent == "usage":
+		var parsed usageEvent
+		if err := json.Unmarshal([]byte(strings.TrimSpace(strings.TrimPrefix(text, "data:"))), &parsed); err == nil {
+			usage = parsed
+		}
+		return sseEvent, usage
+	case text == "":
+		return "", usage
+	default:
+		return sseEvent, usage
 	}
 }
