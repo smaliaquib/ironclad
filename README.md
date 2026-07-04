@@ -21,3 +21,14 @@ npm run dev
 ```
 npm run build
 ```
+
+### Docker
+
+`VITE_ROUTER_URL` is baked in at build time (Vite env vars are compile-time), so pass it as a build arg:
+
+```
+docker build -t ironclad-frontend --build-arg VITE_ROUTER_URL=http://localhost:8080 .
+docker run --rm -p 5173:80 ironclad-frontend
+```
+
+Serves the built app via nginx with SPA fallback routing.
