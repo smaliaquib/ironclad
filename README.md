@@ -32,3 +32,18 @@ Or pass AWS credentials directly: `-e AWS_ACCESS_KEY_ID=... -e AWS_SECRET_ACCESS
 - `event: error` — `{ "message": string }`
 
 `GET /health` — liveness check.
+
+## Lint, format, test
+
+```
+uv sync --frozen
+uv run ruff check .
+uv run black --check .
+uv run pytest tests/unit/ -v
+```
+
+## CI/CD
+
+`buildspecs/buildspec-ci.yml` — lint (ruff) + format check (black) + unit tests (pytest), meant to run on PRs/feature branch pushes.
+
+`buildspecs/buildspec-cd.yml` — builds the Docker image, pushes `:latest` and `:<commit-sha>` to ECR, then forces an ECS redeployment (`aws ecs update-service --force-new-deployment`) on merges to this branch. Expects `ECR_REPO_URL`, `AWS_DEFAULT_REGION`, `AWS_ACCOUNT_ID`, `ECS_CLUSTER`, `ECS_SERVICE` as CodeBuild environment variables (wired up in the `infra` branch).

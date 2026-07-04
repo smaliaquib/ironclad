@@ -1,0 +1,45 @@
+version: 0.2
+
+# CI - lint, format-check, unit tests
+# Triggered on: pull requests and feature branch pushes
+
+env:
+  variables:
+    PYTHON_VERSION: "3.10"
+
+phases:
+  install:
+    runtime-versions:
+      python: "3.10"
+    commands:
+      - echo "=== Installing uv ==="
+      - curl -LsSf https://astral.sh/uv/install.sh | sh
+      - export PATH="$HOME/.local/bin:$PATH"
+      - uv --version
+
+  pre_build:
+    commands:
+      - echo "=== Syncing dependencies (incl. dev group) ==="
+      - export PATH="$HOME/.local/bin:$PATH"
+      - uv sync --frozen
+
+  build:
+    commands:
+      - export PATH="$HOME/.local/bin:$PATH"
+      - echo "=== Lint (ruff) ==="
+      - uv run ruff check .
+      - echo "=== Format check (black) ==="
+      - uv run black --check .
+
+  post_build:
+    commands:
+      - export PATH="$HOME/.local/bin:$PATH"
+      - echo "=== Unit tests ==="
+      - uv run pytest tests/unit/ -v --tb=short --junitxml=test-results.xml
+
+reports:
+  pytest-results:
+    files:
+      - "test-results.xml"
+    discard-paths: yes
+    file-format: JUNITXML

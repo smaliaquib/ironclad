@@ -4,3 +4,7 @@ __pycache__
 .env
 .env.local
 README.md
+tests
+buildspecs
+.pytest_cache
+test-results.xml
