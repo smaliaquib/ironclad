@@ -14,6 +14,15 @@ uv run uvicorn main:app --reload --port 8000
 
 AWS credentials come from the standard chain (env vars, `~/.aws/credentials`, profile, or instance/task role) — no Anthropic API key needed.
 
+### Docker
+
+```
+docker build -t ironclad-agent .
+docker run --rm -p 8000:8000 --env-file .env ironclad-agent
+```
+
+Or pass AWS credentials directly: `-e AWS_ACCESS_KEY_ID=... -e AWS_SECRET_ACCESS_KEY=... -e AWS_REGION=us-east-1`.
+
 ## API
 
 `POST /invoke` — body `{ "message": string }`, responds with `text/event-stream`:
