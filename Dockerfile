@@ -6,7 +6,7 @@ RUN npm ci
 
 COPY . .
 
-ARG VITE_ROUTER_URL=http://localhost:8080
+ARG VITE_ROUTER_URL=""
 ENV VITE_ROUTER_URL=$VITE_ROUTER_URL
 RUN npm run build
 

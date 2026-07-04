@@ -9,7 +9,11 @@ version: 0.2
 #   AWS_ACCOUNT_ID     - AWS account ID
 #   ECS_CLUSTER        - ECS cluster name
 #   ECS_SERVICE        - ECS service name
-#   ROUTER_URL         - router's base URL, baked in as VITE_ROUTER_URL at build time (Vite env vars are compile-time)
+#
+# VITE_ROUTER_URL is deliberately NOT set here - it defaults to empty (see
+# Dockerfile), meaning the built app calls /invoke as a same-origin relative
+# path. That's correct behind any gateway (ALB or CloudFront) that
+# path-routes /invoke* to the router on the same hostname as the frontend.
 
 env:
   variables:
@@ -34,7 +38,6 @@ phases:
       - |
         docker buildx build \
           --platform linux/amd64 \
-          --build-arg VITE_ROUTER_URL=http://$ROUTER_URL \
           -t $ECR_REPO_URL:latest \
           -t $ECR_REPO_URL:$COMMIT_TAG \
           --push \

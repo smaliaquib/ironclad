@@ -1,4 +1,9 @@
-const ROUTER_URL = import.meta.env.VITE_ROUTER_URL ?? "http://localhost:8080";
+// Empty (the default) means "same origin, relative path" - correct whenever
+// the frontend is served from behind the same gateway (ALB or CloudFront)
+// that path-routes /invoke* to the router. Only needed as an absolute URL
+// for local dev / docker-compose, where frontend and router run on
+// different origins - see .env.example.
+const ROUTER_URL = import.meta.env.VITE_ROUTER_URL ?? "";
 
 export interface InvokeCallbacks {
   onToken: (text: string) => void;
