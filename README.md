@@ -15,6 +15,13 @@ go run .
 - `AGENT_URL` — base URL of the agent service (default `http://localhost:8000`)
 - `ROUTER_ADDR` — listen address (default `:8080`)
 
+### Docker
+
+```
+docker build -t ironclad-router .
+docker run --rm -p 8080:8080 -e AGENT_URL=http://host.docker.internal:8000 ironclad-router
+```
+
 ## API
 
 `POST /invoke` — body `{ "message": string }`, proxies to the agent and streams back `text/event-stream` unchanged.
