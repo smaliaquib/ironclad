@@ -27,7 +27,11 @@ function parseSSEBlock(block: string): SSEEvent | null {
   return { event, data: dataLines.join("\n") };
 }
 
-export async function invokeAgent(message: string, callbacks: InvokeCallbacks, signal?: AbortSignal): Promise<void> {
+export async function invokeAgent(
+  message: string,
+  callbacks: InvokeCallbacks,
+  signal?: AbortSignal,
+): Promise<void> {
   const { onToken, onDone, onError } = callbacks;
 
   let response: Response;

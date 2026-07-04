@@ -3,3 +3,8 @@ dist
 .env
 .env.local
 README.md
+buildspecs
+coverage
+src/**/*.test.ts
+src/**/*.test.tsx
+src/test

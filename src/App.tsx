@@ -39,7 +39,11 @@ function App() {
     const trimmed = text.trim();
     if (!trimmed || isStreaming) return;
 
-    setMessages((prev) => [...prev, { role: "user", content: trimmed }, { role: "assistant", content: "" }]);
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: trimmed },
+      { role: "assistant", content: "" },
+    ]);
     setInput("");
     setIsStreaming(true);
 
@@ -69,7 +73,7 @@ function App() {
           setIsStreaming(false);
         },
       },
-      controller.signal
+      controller.signal,
     );
   };
 
@@ -155,7 +159,16 @@ function App() {
             disabled={isStreaming || !input.trim()}
             aria-label="Send message"
           >
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M12 19V5" />
               <path d="M5 12l7-7 7 7" />
             </svg>

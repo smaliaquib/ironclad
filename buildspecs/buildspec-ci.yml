@@ -1,0 +1,35 @@
+version: 0.2
+
+# CI - lint, format-check, unit tests
+# Triggered on: pull requests and feature branch pushes
+
+env:
+  variables:
+    NODE_VERSION: "20"
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: "20"
+    commands:
+      - node --version
+      - npm --version
+
+  pre_build:
+    commands:
+      - echo "=== Installing dependencies ==="
+      - npm ci
+
+  build:
+    commands:
+      - echo "=== Lint (eslint) ==="
+      - npm run lint
+      - echo "=== Format check (prettier) ==="
+      - npm run format:check
+      - echo "=== Typecheck ==="
+      - npx tsc --noEmit
+
+  post_build:
+    commands:
+      - echo "=== Unit tests ==="
+      - npm run test
