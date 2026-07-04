@@ -34,6 +34,16 @@ async def run_agent(message: str):
         ) as stream:
             async for text in stream.text_stream:
                 yield sse_event("token", {"text": text})
+            final = await stream.get_final_message()
+        # The router watches for this event to enforce per-user daily token
+        # limits; it doesn't change anything for a client that ignores it.
+        yield sse_event(
+            "usage",
+            {
+                "input_tokens": final.usage.input_tokens,
+                "output_tokens": final.usage.output_tokens,
+            },
+        )
         yield sse_event("done", {})
     except Exception as e:
         yield sse_event("error", {"message": str(e)})
