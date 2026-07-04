@@ -1,41 +1,26 @@
 # Ironclad
 
-Chat app with a streaming agent backend.
+Chat app with a streaming agent backend. Each part of the stack lives in its own branch; `master` is just this guide.
 
 ```
 React + TS (frontend)  --POST /invoke-->  Go router  --POST /invoke-->  Python agent (FastAPI + Claude via Bedrock)
         <----------------------------------- SSE stream ------------------------------------------
 ```
 
-## Services
+## Branches
 
-### agent/ (Python, port 8000)
+| Branch | What it is | Run |
+|---|---|---|
+| [`frontend`](https://github.com/smaliaquib/ironclad/tree/frontend) | React + TypeScript (Vite) chat UI, port 5173 | `npm install && npm run dev` |
+| [`router`](https://github.com/smaliaquib/ironclad/tree/router) | Go service, `POST /invoke`, port 8080 | `go run .` |
+| [`agent`](https://github.com/smaliaquib/ironclad/tree/agent) | FastAPI service calling Claude Haiku via AWS Bedrock, port 8000 | `uv sync && uv run uvicorn main:app --reload --port 8000` |
 
-Uses [uv](https://github.com/astral-sh/uv) for dependency management and calls Claude Haiku through AWS Bedrock (`AsyncAnthropicBedrock`), so credentials come from the standard AWS chain (env vars, `~/.aws/credentials`, profile, or instance/task role) rather than an Anthropic API key.
-
-```
-cd agent
-uv sync
-copy .env.example .env   # adjust AWS_REGION / BEDROCK_MODEL_ID, set AWS creds if not using the default chain
-uv run uvicorn main:app --reload --port 8000
-```
-
-### router/ (Go, port 8080)
+Each branch has its own README with full setup and config details. To run the whole stack locally, clone the three branches into sibling directories (or three worktrees of this repo) and start all three.
 
 ```
-cd router
-go run .
-```
-
-Set `AGENT_URL` if the agent isn't at `http://localhost:8000` (default), or `ROUTER_ADDR` to change its listen address (default `:8080`).
-
-### frontend/ (React + TS via Vite, port 5173)
-
-```
-cd frontend
-copy .env.example .env   # optional, defaults to http://localhost:8080
-npm install
-npm run dev
+git clone --branch agent    https://github.com/smaliaquib/ironclad.git ironclad-agent
+git clone --branch router   https://github.com/smaliaquib/ironclad.git ironclad-router
+git clone --branch frontend https://github.com/smaliaquib/ironclad.git ironclad-frontend
 ```
 
 ## Flow
