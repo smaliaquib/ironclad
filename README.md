@@ -23,6 +23,16 @@ git clone --branch router   https://github.com/smaliaquib/ironclad.git ironclad-
 git clone --branch frontend https://github.com/smaliaquib/ironclad.git ironclad-frontend
 ```
 
+## Docker
+
+Each branch has its own `Dockerfile` (see that branch's README for standalone `docker build`/`docker run` usage). To run all three together, clone the three branches as above (as siblings of wherever this `master` checkout lives), create `ironclad-agent/.env` from its `.env.example`, then from this directory:
+
+```
+docker compose up --build
+```
+
+This starts agent (`:8000`), router (`:8080`), and frontend (`:5173`), wired together via `docker-compose.yml`.
+
 ## Flow
 
 1. User types a message in the React UI.
