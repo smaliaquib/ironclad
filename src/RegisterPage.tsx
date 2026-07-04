@@ -74,7 +74,9 @@ function RegisterPage({ onNavigateLogin }: RegisterPageProps) {
                 required
               />
             </label>
-            <p className="auth-hint">At least 12 characters, with upper/lowercase, a number, and a symbol.</p>
+            <p className="auth-hint">
+              At least 12 characters, with upper/lowercase, a number, and a symbol.
+            </p>
             {error && <div className="auth-error">{error}</div>}
             <button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Creating account..." : "Create account"}

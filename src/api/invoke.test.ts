@@ -102,7 +102,9 @@ describe("invokeAgent", () => {
 
     await invokeAgent("hi", { onToken, onDone, onError, onUnauthorized });
 
-    expect(onError).toHaveBeenCalledWith("You've reached today's usage limit - try again tomorrow.");
+    expect(onError).toHaveBeenCalledWith(
+      "You've reached today's usage limit - try again tomorrow.",
+    );
     expect(onUnauthorized).not.toHaveBeenCalled();
   });
 });
