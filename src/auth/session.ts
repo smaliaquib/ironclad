@@ -33,3 +33,21 @@ export async function whoami(): Promise<boolean> {
 export async function logout(): Promise<void> {
   await fetch("/auth/logout", { method: "POST" });
 }
+
+export interface UsageStatus {
+  used: number;
+  limit: number;
+}
+
+// Served by the router (not the edge-auth Lambda) under /invoke/usage rather
+// than its own /usage path, so it reaches the router without needing a new
+// ALB/CloudFront route - /invoke* already routes there with GET allowed.
+export async function fetchUsage(): Promise<UsageStatus | null> {
+  try {
+    const res = await fetch("/invoke/usage");
+    if (!res.ok) return null;
+    return (await res.json()) as UsageStatus;
+  } catch {
+    return null;
+  }
+}

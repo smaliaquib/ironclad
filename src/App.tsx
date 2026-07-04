@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { invokeAgent } from "./api/invoke";
+import { AUTH_ENABLED } from "./auth/config";
+import { fetchUsage, type UsageStatus } from "./auth/session";
 import "./App.css";
 
 interface Message {
@@ -25,9 +27,15 @@ function App({ onSignOut, onUnauthorized }: AppProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [usage, setUsage] = useState<UsageStatus | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!AUTH_ENABLED) return;
+    fetchUsage().then(setUsage);
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -81,6 +89,7 @@ function App({ onSignOut, onUnauthorized }: AppProps) {
           setIsStreaming(false);
           onUnauthorized();
         },
+        onUsageUpdate: (used, limit) => setUsage({ used, limit }),
       },
       controller.signal,
     );
@@ -102,11 +111,21 @@ function App({ onSignOut, onUnauthorized }: AppProps) {
           <span className="brand-mark" aria-hidden="true" />
           Ironclad
         </div>
-        {onSignOut && (
-          <button className="sign-out-btn" onClick={onSignOut}>
-            Sign out
-          </button>
-        )}
+        <div className="header-right">
+          {usage && (
+            <span
+              className={`usage-pill ${usage.used >= usage.limit * 0.9 ? "usage-pill-warn" : ""}`}
+              title={`${usage.used.toLocaleString()} / ${usage.limit.toLocaleString()} tokens used today`}
+            >
+              {usage.used.toLocaleString()} / {usage.limit.toLocaleString()} tokens today
+            </span>
+          )}
+          {onSignOut && (
+            <button className="sign-out-btn" onClick={onSignOut}>
+              Sign out
+            </button>
+          )}
+        </div>
       </header>
 
       {isEmpty ? (

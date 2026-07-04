@@ -11,6 +11,8 @@ export interface InvokeCallbacks {
   onError: (message: string) => void;
   /** Session expired or was never established - caller should show the login page. */
   onUnauthorized: () => void;
+  /** The router appends this after "done" with the caller's updated daily total. */
+  onUsageUpdate?: (used: number, limit: number) => void;
 }
 
 interface SSEEvent {
@@ -39,7 +41,7 @@ export async function invokeAgent(
   callbacks: InvokeCallbacks,
   signal?: AbortSignal,
 ): Promise<void> {
-  const { onToken, onDone, onError, onUnauthorized } = callbacks;
+  const { onToken, onDone, onError, onUnauthorized, onUsageUpdate } = callbacks;
 
   let response: Response;
   try {
@@ -70,6 +72,7 @@ export async function invokeAgent(
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let sawDone = false;
 
   while (true) {
     const { value, done } = await reader.read();
@@ -88,9 +91,15 @@ export async function invokeAgent(
       if (parsed.event === "token") {
         const { text } = JSON.parse(parsed.data) as { text: string };
         onToken(text);
+      } else if (parsed.event === "usage_total") {
+        const usage = JSON.parse(parsed.data) as { used: number; limit: number };
+        onUsageUpdate?.(usage.used, usage.limit);
       } else if (parsed.event === "done") {
+        // Keep reading rather than returning here - the router appends a
+        // usage_total event after "done" in the same stream, so bailing out
+        // now would mean never seeing it.
+        sawDone = true;
         onDone();
-        return;
       } else if (parsed.event === "error") {
         const { message: errMessage } = JSON.parse(parsed.data) as { message: string };
         onError(errMessage);
@@ -99,5 +108,5 @@ export async function invokeAgent(
     }
   }
 
-  onDone();
+  if (!sawDone) onDone();
 }

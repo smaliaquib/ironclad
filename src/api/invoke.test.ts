@@ -92,6 +92,32 @@ describe("invokeAgent", () => {
     expect(onError).not.toHaveBeenCalled();
   });
 
+  it("calls onUsageUpdate for a usage_total event sent after done", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          sseResponse([
+            'event: token\ndata: {"text":"hi"}\n\n',
+            "event: done\ndata: {}\n\n",
+            'event: usage_total\ndata: {"used":1234,"limit":10000}\n\n',
+          ]),
+        ),
+    );
+
+    const onToken = vi.fn();
+    const onDone = vi.fn();
+    const onError = vi.fn();
+    const onUnauthorized = vi.fn();
+    const onUsageUpdate = vi.fn();
+
+    await invokeAgent("hi", { onToken, onDone, onError, onUnauthorized, onUsageUpdate });
+
+    expect(onDone).toHaveBeenCalledOnce();
+    expect(onUsageUpdate).toHaveBeenCalledWith(1234, 10000);
+  });
+
   it("calls onError with a friendly message on a 429 response", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 429 })));
 
