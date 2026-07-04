@@ -4,7 +4,7 @@ import App from "./App";
 
 describe("App", () => {
   it("renders the empty state with suggestion chips", () => {
-    render(<App />);
+    render(<App onSignOut={() => {}} onUnauthorized={() => {}} />);
 
     expect(screen.getByText("What can I help with?")).toBeInTheDocument();
     expect(screen.getByText("What can you help me with?")).toBeInTheDocument();

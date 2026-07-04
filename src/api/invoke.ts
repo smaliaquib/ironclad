@@ -9,6 +9,8 @@ export interface InvokeCallbacks {
   onToken: (text: string) => void;
   onDone: () => void;
   onError: (message: string) => void;
+  /** Session expired or was never established - caller should show the login page. */
+  onUnauthorized: () => void;
 }
 
 interface SSEEvent {
@@ -37,7 +39,7 @@ export async function invokeAgent(
   callbacks: InvokeCallbacks,
   signal?: AbortSignal,
 ): Promise<void> {
-  const { onToken, onDone, onError } = callbacks;
+  const { onToken, onDone, onError, onUnauthorized } = callbacks;
 
   let response: Response;
   try {
@@ -52,6 +54,14 @@ export async function invokeAgent(
     return;
   }
 
+  if (response.status === 401) {
+    onUnauthorized();
+    return;
+  }
+  if (response.status === 429) {
+    onError("You've reached today's usage limit - try again tomorrow.");
+    return;
+  }
   if (!response.ok || !response.body) {
     onError(`request failed: ${response.status}`);
     return;

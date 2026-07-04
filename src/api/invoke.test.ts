@@ -36,8 +36,9 @@ describe("invokeAgent", () => {
     const onToken = vi.fn();
     const onDone = vi.fn();
     const onError = vi.fn();
+    const onUnauthorized = vi.fn();
 
-    await invokeAgent("hi", { onToken, onDone, onError });
+    await invokeAgent("hi", { onToken, onDone, onError, onUnauthorized });
 
     expect(onToken).toHaveBeenNthCalledWith(1, "Hel");
     expect(onToken).toHaveBeenNthCalledWith(2, "lo");
@@ -51,8 +52,9 @@ describe("invokeAgent", () => {
     const onToken = vi.fn();
     const onDone = vi.fn();
     const onError = vi.fn();
+    const onUnauthorized = vi.fn();
 
-    await invokeAgent("hi", { onToken, onDone, onError });
+    await invokeAgent("hi", { onToken, onDone, onError, onUnauthorized });
 
     expect(onError).toHaveBeenCalledWith("request failed: 502");
     expect(onToken).not.toHaveBeenCalled();
@@ -68,10 +70,39 @@ describe("invokeAgent", () => {
     const onToken = vi.fn();
     const onDone = vi.fn();
     const onError = vi.fn();
+    const onUnauthorized = vi.fn();
 
-    await invokeAgent("hi", { onToken, onDone, onError });
+    await invokeAgent("hi", { onToken, onDone, onError, onUnauthorized });
 
     expect(onError).toHaveBeenCalledWith("boom");
     expect(onDone).not.toHaveBeenCalled();
+  });
+
+  it("calls onUnauthorized on a 401 response", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 401 })));
+
+    const onToken = vi.fn();
+    const onDone = vi.fn();
+    const onError = vi.fn();
+    const onUnauthorized = vi.fn();
+
+    await invokeAgent("hi", { onToken, onDone, onError, onUnauthorized });
+
+    expect(onUnauthorized).toHaveBeenCalledOnce();
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it("calls onError with a friendly message on a 429 response", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 429 })));
+
+    const onToken = vi.fn();
+    const onDone = vi.fn();
+    const onError = vi.fn();
+    const onUnauthorized = vi.fn();
+
+    await invokeAgent("hi", { onToken, onDone, onError, onUnauthorized });
+
+    expect(onError).toHaveBeenCalledWith("You've reached today's usage limit - try again tomorrow.");
+    expect(onUnauthorized).not.toHaveBeenCalled();
   });
 });

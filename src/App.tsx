@@ -16,7 +16,12 @@ const SUGGESTIONS = [
   "Give me three ideas for a side project",
 ];
 
-function App() {
+interface AppProps {
+  onSignOut: () => void;
+  onUnauthorized: () => void;
+}
+
+function App({ onSignOut, onUnauthorized }: AppProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -72,6 +77,10 @@ function App() {
           });
           setIsStreaming(false);
         },
+        onUnauthorized: () => {
+          setIsStreaming(false);
+          onUnauthorized();
+        },
       },
       controller.signal,
     );
@@ -93,6 +102,9 @@ function App() {
           <span className="brand-mark" aria-hidden="true" />
           Ironclad
         </div>
+        <button className="sign-out-btn" onClick={onSignOut}>
+          Sign out
+        </button>
       </header>
 
       {isEmpty ? (
