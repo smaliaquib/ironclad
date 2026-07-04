@@ -16,17 +16,22 @@ React + TS (frontend)  --POST /invoke-->  Go router  --POST /invoke-->  Python a
 | [`agent`](https://github.com/smaliaquib/ironclad/tree/agent) | FastAPI service calling Claude Haiku via AWS Bedrock, port 8000 | `uv sync && uv run uvicorn main:app --reload --port 8000` |
 | [`infra`](https://github.com/smaliaquib/ironclad/tree/infra) | Terraform: AWS ECS Fargate + single ALB + CodePipeline per app | `terraform init && terraform plan -var-file=envs/dev.tfvars` |
 
-Each branch has its own README with full setup and config details. To run the whole stack locally, clone the three branches into sibling directories (or three worktrees of this repo) and start all three.
+Each branch has its own README with full setup and config details. Working across all four at once (without repeatedly `git checkout`ing back and forth) is exactly what [git worktrees](https://git-scm.com/docs/git-worktree) are for — one clone, one `.git`, but each branch checked out into its own folder simultaneously:
 
 ```
-git clone --branch agent    https://github.com/smaliaquib/ironclad.git ironclad-agent
-git clone --branch router   https://github.com/smaliaquib/ironclad.git ironclad-router
-git clone --branch frontend https://github.com/smaliaquib/ironclad.git ironclad-frontend
+git clone --branch master https://github.com/smaliaquib/ironclad.git ironclad
+cd ironclad
+git worktree add ../frontend frontend
+git worktree add ../router   router
+git worktree add ../agent    agent
+git worktree add ../infra    infra
 ```
+
+This gives you sibling folders `frontend/`, `router/`, `agent/`, `infra/` next to this `ironclad/` (master) checkout — `cd` into whichever one you're working on, no branch switching required. `git worktree list` shows all of them; `git worktree remove <path>` drops one you no longer need.
 
 ## Docker
 
-Each branch has its own `Dockerfile` (see that branch's README for standalone `docker build`/`docker run` usage). To run all three together, clone the three branches as above (as siblings of wherever this `master` checkout lives), create `ironclad-agent/.env` from its `.env.example`, then from this directory:
+Each branch has its own `Dockerfile` (see that branch's README for standalone `docker build`/`docker run` usage). To run all three together, set up the worktrees as above, create `agent/.env` from its `.env.example`, then from this directory:
 
 ```
 docker compose up --build
