@@ -17,7 +17,7 @@ const SUGGESTIONS = [
 ];
 
 interface AppProps {
-  onSignOut: () => void;
+  onSignOut?: () => void;
   onUnauthorized: () => void;
 }
 
@@ -102,9 +102,11 @@ function App({ onSignOut, onUnauthorized }: AppProps) {
           <span className="brand-mark" aria-hidden="true" />
           Ironclad
         </div>
-        <button className="sign-out-btn" onClick={onSignOut}>
-          Sign out
-        </button>
+        {onSignOut && (
+          <button className="sign-out-btn" onClick={onSignOut}>
+            Sign out
+          </button>
+        )}
       </header>
 
       {isEmpty ? (

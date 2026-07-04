@@ -11,6 +11,7 @@ version: 0.2
 #   ECS_SERVICE          - ECS service name
 #   COGNITO_USER_POOL_ID - Cognito user pool id (public identifier, baked into the bundle)
 #   COGNITO_CLIENT_ID    - Cognito SPA app client id (public identifier, no secret)
+#   ENABLE_AUTH          - mirrors the infra's enable_auth - "true"/"false"
 #
 # VITE_ROUTER_URL is deliberately NOT set here - it defaults to empty (see
 # Dockerfile), meaning the built app calls /invoke as a same-origin relative
@@ -44,6 +45,7 @@ phases:
           -t $ECR_REPO_URL:$COMMIT_TAG \
           --build-arg VITE_COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID \
           --build-arg VITE_COGNITO_CLIENT_ID=$COGNITO_CLIENT_ID \
+          --build-arg VITE_ENABLE_AUTH=$ENABLE_AUTH \
           --push \
           --no-cache \
           .
