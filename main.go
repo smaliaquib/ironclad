@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -59,6 +60,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/invoke", withCORS(handleInvoke))
+	mux.HandleFunc("/invoke/usage", withCORS(handleUsage))
 	mux.HandleFunc("/health", withCORS(handleHealth))
 
 	log.Printf("router listening on %s, forwarding to agent at %s", addr, agentBaseURL)
@@ -84,6 +86,35 @@ func handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"ok"}`))
 }
 
+type usageStatus struct {
+	Used  int `json:"used"`
+	Limit int `json:"limit"`
+}
+
+// handleUsage reports the caller's token usage for today, so the frontend
+// can show it before the first message of a session is even sent.
+func handleUsage(w http.ResponseWriter, r *http.Request) {
+	if !requireAuth {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+
+	userID, err := verifyIDToken(r)
+	if err != nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	used, err := getUsedToday(r.Context(), userID)
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(usageStatus{Used: used, Limit: dailyTokenLimit})
+}
+
 func handleInvoke(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -99,11 +130,17 @@ func handleInvoke(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		underLimit, err := checkUnderLimit(r.Context(), userID)
+		used, err := getUsedToday(r.Context(), userID)
 		if err != nil {
 			log.Printf("usage check failed: %v", err)
-		} else if !underLimit {
-			http.Error(w, `{"error":"daily token limit exceeded"}`, http.StatusTooManyRequests)
+		} else if used >= dailyTokenLimit {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusTooManyRequests)
+			json.NewEncoder(w).Encode(map[string]any{
+				"error": "daily token limit exceeded",
+				"used":  used,
+				"limit": dailyTokenLimit,
+			})
 			return
 		}
 	}
@@ -166,8 +203,14 @@ func handleInvoke(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if requireAuth && usage.InputTokens+usage.OutputTokens > 0 {
-		if err := recordUsage(context.Background(), userID, usage.InputTokens+usage.OutputTokens); err != nil {
+		newTotal, err := recordUsage(context.Background(), userID, usage.InputTokens+usage.OutputTokens)
+		if err != nil {
 			log.Printf("recording usage failed: %v", err)
+		} else {
+			fmt.Fprintf(w, "event: usage_total\ndata: {\"used\":%d,\"limit\":%d}\n\n", newTotal, dailyTokenLimit)
+			if ok {
+				flusher.Flush()
+			}
 		}
 	}
 }

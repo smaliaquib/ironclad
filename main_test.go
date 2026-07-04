@@ -71,6 +71,17 @@ func TestHandleInvoke_UnauthorizedWithoutCookie(t *testing.T) {
 	}
 }
 
+func TestHandleUsage_NotFoundWhenAuthDisabled(t *testing.T) {
+	req := httptest.NewRequest(http.MethodGet, "/invoke/usage", nil)
+	rec := httptest.NewRecorder()
+
+	handleUsage(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected status 404 with auth disabled, got %d", rec.Code)
+	}
+}
+
 func TestTrackUsageEvent(t *testing.T) {
 	lines := []string{
 		"event: token\n",
