@@ -14,6 +14,7 @@ React + TS (frontend)  --POST /invoke-->  Go router  --POST /invoke-->  Python a
 | [`frontend`](https://github.com/smaliaquib/ironclad/tree/frontend) | React + TypeScript (Vite) chat UI, port 5173 | `npm install && npm run dev` |
 | [`router`](https://github.com/smaliaquib/ironclad/tree/router) | Go service, `POST /invoke`, port 8080 | `go run .` |
 | [`agent`](https://github.com/smaliaquib/ironclad/tree/agent) | FastAPI service calling Claude Haiku via AWS Bedrock, port 8000 | `uv sync && uv run uvicorn main:app --reload --port 8000` |
+| [`infra`](https://github.com/smaliaquib/ironclad/tree/infra) | Terraform: AWS ECS Fargate + single ALB + CodePipeline per app | `terraform init && terraform plan -var-file=envs/dev.tfvars` |
 
 Each branch has its own README with full setup and config details. To run the whole stack locally, clone the three branches into sibling directories (or three worktrees of this repo) and start all three.
 
@@ -32,6 +33,10 @@ docker compose up --build
 ```
 
 This starts agent (`:8000`), router (`:8080`), and frontend (`:5173`), wired together via `docker-compose.yml`.
+
+## AWS deployment
+
+The `infra` branch has Terraform for running this on ECS Fargate: one public ALB path-routes to frontend (`/`) and router (`/invoke*`); agent has no ALB and is reached from router over Cloud Map service discovery. Each app is its own ECS service, ECR repo, CloudWatch log group, and CodePipeline tracking its own branch. Nothing has been applied yet — see that branch's README before running `terraform apply`.
 
 ## Flow
 
