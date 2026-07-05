@@ -2,13 +2,27 @@ import asyncio
 import json
 import logging
 import os
+import warnings
 
 import boto3
-from anthropic import AsyncAnthropicBedrock
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
+from langchain_aws import ChatBedrockConverse
 from pydantic import BaseModel
+
+# create_react_agent is deprecated in favor of langchain.agents.create_agent,
+# but as of langchain==1.3.11/langgraph==1.2.7 the new create_agent does not
+# propagate on_chat_model_stream events through astream_events (verified: a
+# real streaming run produced zero chunks), while this deprecated one does -
+# confirmed live against Bedrock. Real token streaming is a hard requirement
+# here (the router/frontend depend on the "token" SSE event), so this stays
+# until create_agent's streaming catches up.
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    from langgraph.prebuilt import create_react_agent
+
+from mcp_tools import get_mcp_tools
 
 load_dotenv()
 
@@ -41,8 +55,10 @@ def _resolve_knowledge_base_id() -> str:
 KNOWLEDGE_BASE_ID = _resolve_knowledge_base_id()
 
 app = FastAPI(title="Ironclad Agent")
-client = AsyncAnthropicBedrock(
-    aws_region=os.getenv("AWS_REGION", "us-east-1"),
+model = ChatBedrockConverse(
+    model_id=MODEL,
+    region_name=os.getenv("AWS_REGION", "us-east-1"),
+    streaming=True,
 )
 bedrock_agent_client = (
     boto3.client("bedrock-agent-runtime", region_name=os.getenv("AWS_REGION", "us-east-1"))
@@ -106,21 +122,40 @@ async def run_agent(message: str):
                 f"Context:\n{context_block}\n\nQuestion: {message}"
             )
 
-        async with client.messages.stream(
-            model=MODEL,
-            max_tokens=4096,
-            messages=[{"role": "user", "content": prompt}],
-        ) as stream:
-            async for text in stream.text_stream:
-                yield sse_event("token", {"text": text})
-            final = await stream.get_final_message()
+        tools = await get_mcp_tools()
+        agent = create_react_agent(model, tools=tools)
+
+        total_input_tokens = 0
+        total_output_tokens = 0
+        async for event in agent.astream_events(
+            {"messages": [{"role": "user", "content": prompt}]}, version="v2"
+        ):
+            if event["event"] == "on_chat_model_stream":
+                content = event["data"]["chunk"].content
+                if isinstance(content, str):
+                    if content:
+                        yield sse_event("token", {"text": content})
+                elif isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "text":
+                            text = block.get("text", "")
+                            if text:
+                                yield sse_event("token", {"text": text})
+            elif event["event"] == "on_chat_model_end":
+                usage = getattr(event["data"].get("output"), "usage_metadata", None)
+                if usage:
+                    total_input_tokens += usage.get("input_tokens", 0) or 0
+                    total_output_tokens += usage.get("output_tokens", 0) or 0
+
         # The router watches for this event to enforce per-user daily token
         # limits; it doesn't change anything for a client that ignores it.
+        # Summed across every model call the tool-use loop made this turn,
+        # not just one - a tool-calling exchange makes more than one.
         yield sse_event(
             "usage",
             {
-                "input_tokens": final.usage.input_tokens,
-                "output_tokens": final.usage.output_tokens,
+                "input_tokens": total_input_tokens,
+                "output_tokens": total_output_tokens,
             },
         )
         yield sse_event("done", {})
