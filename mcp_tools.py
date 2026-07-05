@@ -1,7 +1,6 @@
 import logging
 import os
 import time
-from functools import partial
 
 import httpx
 from langchain_core.tools import StructuredTool
@@ -42,6 +41,19 @@ async def _call_tool(name: str, **kwargs) -> str:
     return text
 
 
+def _make_tool_coroutine(name: str):
+    """Returns a real async function bound to `name`, not a functools.partial -
+    LangChain's tool-schema introspection calls inspect on the coroutine, and
+    a partial object lacks the __name__/__code__ a real function has, which
+    fails with "is not a module, class, method, or function" (confirmed live).
+    """
+
+    async def _tool_coroutine(**kwargs) -> str:
+        return await _call_tool(name, **kwargs)
+
+    return _tool_coroutine
+
+
 async def get_mcp_tools() -> list[StructuredTool]:
     """Returns the current MCP tool catalog as LangGraph-ready tools, cached
     for _TOOLS_CACHE_TTL_SECONDS (matching the gateway's own registry cache,
@@ -73,7 +85,7 @@ async def get_mcp_tools() -> list[StructuredTool]:
                 name=entry["name"],
                 description=entry["description"],
                 args_schema=entry["inputSchema"],
-                coroutine=partial(_call_tool, entry["name"]),
+                coroutine=_make_tool_coroutine(entry["name"]),
             )
             for entry in entries
         ]
