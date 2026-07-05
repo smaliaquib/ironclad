@@ -15,6 +15,8 @@ uv run uvicorn main:app --reload --port 8000
 
 AWS credentials come from the standard chain (env vars, `~/.aws/credentials`, profile, or instance/task role) — no Anthropic API key needed.
 
+Optional `KNOWLEDGE_BASE_ID` env var enables RAG: if set, every message first calls Bedrock's `Retrieve` API against that knowledge base and weaves any matching chunks into the prompt before the normal Claude call - unset (the default) skips retrieval entirely, so this needs no extra setup for local dev.
+
 ### Docker
 
 ```
@@ -28,7 +30,9 @@ Or pass AWS credentials directly: `-e AWS_ACCESS_KEY_ID=... -e AWS_SECRET_ACCESS
 
 `POST /invoke` — body `{ "message": string }`, responds with `text/event-stream`:
 
+- `event: sources` — `{ "sources": string[] }`, source document filenames - only sent if `KNOWLEDGE_BASE_ID` is set and retrieval returned matches, always before any `token` events
 - `event: token` — `{ "text": string }` delta
+- `event: usage` — `{ "input_tokens": number, "output_tokens": number }`, real Bedrock token counts - the router (not this service) uses this to enforce per-user daily limits
 - `event: done` — stream finished
 - `event: error` — `{ "message": string }`
 
