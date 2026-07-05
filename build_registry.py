@@ -12,7 +12,14 @@ import json
 import os
 import subprocess
 
-TOOLS = ["echo", "get_time", "add_numbers"]
+TOOLS = [
+    "echo",
+    "get_time",
+    "add_numbers",
+    "slack_post_message",
+    "slack_read_history",
+    "slack_list_channels",
+]
 
 
 def main() -> None:

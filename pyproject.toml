@@ -4,13 +4,13 @@ version = "0.1.0"
 description = "Lambda-backed MCP tools for the Ironclad mcp-gateway"
 requires-python = ">=3.12"
 dependencies = [
+    "boto3>=1.43.40",
     "pydantic>=2.13.4",
 ]
 
 [dependency-groups]
 dev = [
     "black>=26.5.1",
-    "boto3>=1.43.40",
     "pytest>=9.1.1",
     "ruff>=0.15.20",
 ]

@@ -18,6 +18,12 @@ from tools.echo import NAME as ECHO_NAME
 from tools.echo import EchoInput
 from tools.get_time import NAME as GET_TIME_NAME
 from tools.get_time import GetTimeInput
+from tools.slack_list_channels import NAME as SLACK_LIST_CHANNELS_NAME
+from tools.slack_list_channels import SlackListChannelsInput
+from tools.slack_post_message import NAME as SLACK_POST_MESSAGE_NAME
+from tools.slack_post_message import SlackPostMessageInput
+from tools.slack_read_history import NAME as SLACK_READ_HISTORY_NAME
+from tools.slack_read_history import SlackReadHistoryInput
 
 OUTPUT_PATH = Path(__file__).parent / "schemas.generated.json"
 
@@ -27,6 +33,9 @@ def main() -> None:
         ECHO_NAME: EchoInput.model_json_schema(),
         GET_TIME_NAME: GetTimeInput.model_json_schema(),
         ADD_NUMBERS_NAME: AddNumbersInput.model_json_schema(),
+        SLACK_POST_MESSAGE_NAME: SlackPostMessageInput.model_json_schema(),
+        SLACK_READ_HISTORY_NAME: SlackReadHistoryInput.model_json_schema(),
+        SLACK_LIST_CHANNELS_NAME: SlackListChannelsInput.model_json_schema(),
     }
     OUTPUT_PATH.write_text(json.dumps(schemas, indent=2, sort_keys=True) + "\n")
 

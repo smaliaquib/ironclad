@@ -34,5 +34,48 @@
     "properties": {},
     "title": "GetTimeInput",
     "type": "object"
+  },
+  "slack_list_channels": {
+    "properties": {},
+    "title": "SlackListChannelsInput",
+    "type": "object"
+  },
+  "slack_post_message": {
+    "properties": {
+      "channel": {
+        "title": "Channel",
+        "type": "string"
+      },
+      "text": {
+        "title": "Text",
+        "type": "string"
+      }
+    },
+    "required": [
+      "channel",
+      "text"
+    ],
+    "title": "SlackPostMessageInput",
+    "type": "object"
+  },
+  "slack_read_history": {
+    "properties": {
+      "channel": {
+        "title": "Channel",
+        "type": "string"
+      },
+      "limit": {
+        "default": 10,
+        "maximum": 100,
+        "minimum": 1,
+        "title": "Limit",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "channel"
+    ],
+    "title": "SlackReadHistoryInput",
+    "type": "object"
   }
 }

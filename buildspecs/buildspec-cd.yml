@@ -54,10 +54,13 @@ phases:
       - uv run python generate_schemas.py
       - echo "=== Deploying each tool's Lambda code ==="
       - |
-        for TOOL in echo get_time add_numbers; do
+        for TOOL in echo get_time add_numbers slack_post_message slack_read_history slack_list_channels; do
           echo "--- $TOOL ---"
           rm -rf build_pkg && mkdir build_pkg
           cp -r vendor/* build_pkg/
+          case "$TOOL" in
+            slack_*) cp tools/_slack_client.py build_pkg/ ;;
+          esac
           cp "tools/${TOOL}.py" build_pkg/handler.py
           ( cd build_pkg && zip -rq "../${TOOL}.zip" . -x '*.dist-info/*' )
           FUNCTION_NAME="${NAME_PREFIX}-mcp-tool-${TOOL}"
@@ -69,7 +72,7 @@ phases:
         done
       - echo "=== Waiting for all functions to finish updating ==="
       - |
-        for TOOL in echo get_time add_numbers; do
+        for TOOL in echo get_time add_numbers slack_post_message slack_read_history slack_list_channels; do
           aws lambda wait function-updated \
             --function-name "${NAME_PREFIX}-mcp-tool-${TOOL}" \
             --region "$AWS_DEFAULT_REGION"
