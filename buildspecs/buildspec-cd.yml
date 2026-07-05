@@ -1,0 +1,61 @@
+version: 0.2
+
+# CD - build, tag, push to ECR, force ECS redeployment
+# Triggered on: merges to the mcp-gateway branch
+#
+# Required environment variables (injected by the CodeBuild project):
+#   ECR_REPO_URL       - full ECR repo URI (e.g. 123456789.dkr.ecr.us-east-1.amazonaws.com/ironclad-dev-mcp-gateway)
+#   AWS_DEFAULT_REGION - target region
+#   AWS_ACCOUNT_ID     - AWS account ID
+#   ECS_CLUSTER        - ECS cluster name
+#   ECS_SERVICE        - ECS service name (same string as the task definition family name)
+#
+# --task-definition $ECS_SERVICE matters, not just --force-new-deployment:
+# Terraform registers new task definition revisions (env var/IAM changes) but
+# the ECS service has lifecycle { ignore_changes = [task_definition] }, so it
+# never switches to them on its own. Passing the family name (no revision
+# number) tells ECS "use whatever the latest active revision is" on every
+# deploy, so newer Terraform-registered revisions actually get picked up
+# instead of the service staying pinned to whatever revision it last used.
+
+env:
+  variables:
+    # Default for local/manual builds - overridden by the CodeBuild project's env vars
+    AWS_DEFAULT_REGION: "us-east-1"
+
+phases:
+  pre_build:
+    commands:
+      - echo "=== Authenticating to ECR ==="
+      - ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+      - COMMIT_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c1-8)
+      - echo "Image will be tagged as :latest and :$COMMIT_TAG"
+      - echo "=== Setting up docker buildx ==="
+      - docker buildx create --use --name multiarch-builder || docker buildx use multiarch-builder
+      - docker buildx inspect --bootstrap
+
+  build:
+    commands:
+      - echo "=== Building and pushing Docker image ==="
+      - |
+        docker buildx build \
+          --platform linux/amd64 \
+          -t $ECR_REPO_URL:latest \
+          -t $ECR_REPO_URL:$COMMIT_TAG \
+          --push \
+          --no-cache \
+          .
+
+  post_build:
+    commands:
+      - echo "=== Forcing ECS redeployment ==="
+      - |
+        aws ecs update-service \
+          --cluster $ECS_CLUSTER \
+          --service $ECS_SERVICE \
+          --task-definition $ECS_SERVICE \
+          --force-new-deployment \
+          --region $AWS_DEFAULT_REGION
+      - echo "=== Deployment triggered for $ECS_CLUSTER / $ECS_SERVICE ==="
+      - echo "Image pushed -> $ECR_REPO_URL:latest ($ECR_REPO_URL:$COMMIT_TAG)"

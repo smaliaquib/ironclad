@@ -1,0 +1,64 @@
+openapi: 3.0.3
+info:
+  title: Ironclad MCP Gateway
+  version: 0.1.0
+  description: >
+    Thin JSON-RPC 2.0 dispatcher over the Model Context Protocol (MCP) wire
+    format. Tool definitions and schemas come from a registry (an SSM
+    Parameter) published by the mcp-tools application's own CI/CD - this
+    gateway has no tool-specific logic of its own.
+paths:
+  /mcp:
+    post:
+      summary: JSON-RPC 2.0 endpoint (initialize / tools/list / tools/call)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [jsonrpc, method]
+              properties:
+                jsonrpc:
+                  type: string
+                  enum: ["2.0"]
+                id:
+                  description: Request id, echoed back on the response.
+                method:
+                  type: string
+                  enum: [initialize, tools/list, tools/call]
+                params:
+                  type: object
+      responses:
+        "200":
+          description: JSON-RPC 2.0 response (result or error)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jsonrpc:
+                    type: string
+                  id: {}
+                  result: {}
+                  error:
+                    type: object
+                    properties:
+                      code:
+                        type: integer
+                      message:
+                        type: string
+  /health:
+    get:
+      summary: Liveness check
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]

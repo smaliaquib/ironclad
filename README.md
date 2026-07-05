@@ -1,51 +1,54 @@
-# Ironclad
 
-Chat app with a streaming agent backend. Each part of the stack lives in its own branch; `master` is just this guide.
+# Ironclad — mcp-gateway
 
-```
-React + TS (frontend)  --POST /invoke-->  Go router  --POST /invoke-->  Python agent (FastAPI + Claude via Bedrock)
-        <----------------------------------- SSE stream ------------------------------------------
-```
-
-## Branches
-
-| Branch | What it is | Run |
-|---|---|---|
-| [`frontend`](https://github.com/smaliaquib/ironclad/tree/frontend) | React + TypeScript (Vite) chat UI, port 5173 | `npm install && npm run dev` |
-| [`router`](https://github.com/smaliaquib/ironclad/tree/router) | Go service, `POST /invoke`, port 8080 | `go run .` |
-| [`agent`](https://github.com/smaliaquib/ironclad/tree/agent) | FastAPI service calling Claude Haiku via AWS Bedrock, port 8000 | `uv sync && uv run uvicorn main:app --reload --port 8000` |
-| [`infra`](https://github.com/smaliaquib/ironclad/tree/infra) | Terraform: AWS ECS Fargate + single ALB + CodePipeline per app | `terraform init && terraform plan -var-file=envs/dev.tfvars` |
-
-Each branch has its own README with full setup and config details. Working across all four at once (without repeatedly `git checkout`ing back and forth) is exactly what [git worktrees](https://git-scm.com/docs/git-worktree) are for — one clone, one `.git`, but each branch checked out into its own folder simultaneously:
+The MCP gateway service for [Ironclad](https://github.com/smaliaquib/ironclad) — see the `master` branch for the full project overview. Go service exposing a thin JSON-RPC 2.0 (MCP wire protocol) endpoint that dispatches tool calls to Lambda functions - it has no tool-specific logic of its own; every tool comes from the registry.
 
 ```
-git clone --branch master https://github.com/smaliaquib/ironclad.git ironclad
-cd ironclad
-git worktree add ../frontend frontend
-git worktree add ../router   router
-git worktree add ../agent    agent
-git worktree add ../infra    infra
+agent (future: tool-use loop) --POST /mcp--> mcp-gateway --lambda:Invoke--> mcp-tools' Lambdas
 ```
 
-This gives you sibling folders `frontend/`, `router/`, `agent/`, `infra/` next to this `ironclad/` (master) checkout — `cd` into whichever one you're working on, no branch switching required. `git worktree list` shows all of them; `git worktree remove <path>` drops one you no longer need.
-
-## Docker
-
-Each branch has its own `Dockerfile` (see that branch's README for standalone `docker build`/`docker run` usage). To run all three together, set up the worktrees as above, create `agent/.env` from its `.env.example`, then from this directory:
+## Run
 
 ```
-docker compose up --build
+go run .
 ```
 
-This starts agent (`:8000`), router (`:8080`), and frontend (`:5173`), wired together via `docker-compose.yml`.
+## Config (env vars)
 
-## AWS deployment
+- `MCP_GATEWAY_ADDR` — listen address (default `:9000`)
+- `AWS_REGION` — region for the SSM/Lambda clients (default `us-east-1`)
+- `MCP_REGISTRY_SSM_PARAM` — SSM parameter name holding the tool registry (JSON array of `{name, description, input_schema, lambda_arn}`), written by the `mcp-tools` branch's own CD pipeline
+- `MCP_REGISTRY_VERSION_LABEL` — optional; if set, reads a specific labeled parameter version (`aws ssm label-parameter-version`) instead of always the latest, for pinning the served catalog independent of the newest deploy
 
-The `infra` branch has Terraform for running this on ECS Fargate: one public ALB path-routes to frontend (`/`) and router (`/invoke*`); agent has no ALB and is reached from router over Cloud Map service discovery. Each app is its own ECS service, ECR repo, CloudWatch log group, and CodePipeline tracking its own branch. Nothing has been applied yet — see that branch's README before running `terraform apply`.
+### Docker
 
-## Flow
+```
+docker build -t ironclad-mcp-gateway .
+docker run --rm -p 9000:9000 -e MCP_REGISTRY_SSM_PARAM=/ironclad-dev/mcp-gateway/tool-registry ironclad-mcp-gateway
+```
 
-1. User types a message in the React UI.
-2. Frontend POSTs `{ message }` to the router's `/invoke`.
-3. Router forwards the request to the agent's `/invoke` and streams the SSE response back to the browser untouched.
-4. Agent calls Claude Haiku via Bedrock with streaming enabled and emits SSE events: `token` (text delta), `done`, `error`.
+## API
+
+`POST /mcp` — hand-rolled JSON-RPC 2.0, methods:
+
+- `initialize` → `{ protocolVersion, serverInfo }`
+- `tools/list` → `{ tools: [{ name, description, inputSchema }] }`, read from the tool registry (cached in memory, refreshed at most once every 60s so a new `mcp-tools` deploy is picked up without a gateway restart)
+- `tools/call` → `{ name, arguments }` in, `{ content: [{ type: "text", text }], isError? }` out. Invokes the tool's Lambda synchronously; a Lambda-side `FunctionError` maps to `isError: true` rather than an HTTP 5xx.
+
+`GET /health` — liveness check.
+
+`GET /openapi.yaml` — static OpenAPI 3.0 doc describing this gateway's own two endpoints (the gateway has no per-tool business logic to generate docs from - the tools' own schemas are what `tools/list` returns).
+
+## Lint, format, test
+
+```
+gofmt -l .          # lists any unformatted files (empty output = clean)
+go vet ./...
+go test ./... -v
+```
+
+## CI/CD
+
+`buildspecs/buildspec-ci.yml` — gofmt check + `go vet` + `go test`, meant to run on PRs/feature branch pushes.
+
+`buildspecs/buildspec-cd.yml` — builds the Docker image, pushes `:latest` and `:<commit-sha>` to ECR, then forces an ECS redeployment (`aws ecs update-service --force-new-deployment`) on merges to this branch. Expects `ECR_REPO_URL`, `AWS_DEFAULT_REGION`, `AWS_ACCOUNT_ID`, `ECS_CLUSTER`, `ECS_SERVICE` as CodeBuild environment variables (wired up in the `infra` branch).

@@ -1,7 +1,2 @@
-node_modules/
-dist/
-.venv/
-__pycache__/
-*.pyc
-.env
-.env.local
+/mcp-gateway
+/mcp-gateway.exe

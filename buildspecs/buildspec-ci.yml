@@ -1,0 +1,38 @@
+version: 0.2
+
+# CI - format-check, vet, unit tests
+# Triggered on: pull requests and feature branch pushes
+
+env:
+  variables:
+    GO_VERSION: "1.25"
+
+phases:
+  install:
+    runtime-versions:
+      golang: "1.25"
+    commands:
+      - go version
+
+  pre_build:
+    commands:
+      - echo "=== Downloading modules ==="
+      - go mod download
+
+  build:
+    commands:
+      - echo "=== Format check (gofmt) ==="
+      - |
+        UNFORMATTED=$(gofmt -l .)
+        if [ -n "$UNFORMATTED" ]; then
+          echo "The following files are not gofmt-formatted:"
+          echo "$UNFORMATTED"
+          exit 1
+        fi
+      - echo "=== Vet ==="
+      - go vet ./...
+
+  post_build:
+    commands:
+      - echo "=== Unit tests ==="
+      - go test ./... -v
