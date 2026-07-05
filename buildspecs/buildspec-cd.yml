@@ -89,6 +89,7 @@ phases:
         aws ssm put-parameter \
           --name "$REGISTRY_SSM_PARAM" \
           --type String \
+          --tier Advanced \
           --overwrite \
           --value "$(cat registry.json)" \
           --region "$AWS_DEFAULT_REGION"
