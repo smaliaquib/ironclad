@@ -38,7 +38,17 @@ def _get_credentials() -> dict:
     if _cached_credentials is None:
         ssm = boto3.client("ssm")
         response = ssm.get_parameter(Name=_GMAIL_CREDENTIALS_SSM_PARAM, WithDecryption=True)
-        _cached_credentials = json.loads(response["Parameter"]["Value"])
+        raw = response["Parameter"]["Value"]
+        try:
+            _cached_credentials = json.loads(raw)
+        except json.JSONDecodeError as e:
+            # Deliberately does not include any of `raw` - it's a secret
+            # (client_secret/refresh_token), unlike the token-exchange and
+            # Gmail API response bodies below which are safe to surface.
+            raise RuntimeError(
+                f"Gmail credentials SSM parameter is not valid JSON "
+                f"(length={len(raw)}, starts_with={raw[:1]!r})"
+            ) from e
     return _cached_credentials
 
 
