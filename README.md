@@ -1,51 +1,43 @@
-# Ironclad
 
-Chat app with a streaming agent backend. Each part of the stack lives in its own branch; `master` is just this guide.
+# Ironclad — grafana
 
-```
-React + TS (frontend)  --POST /invoke-->  Go router  --POST /invoke-->  Python agent (FastAPI + Claude via Bedrock)
-        <----------------------------------- SSE stream ------------------------------------------
-```
+Observability for [Ironclad](https://github.com/smaliaquib/ironclad) — see the `master` branch for the full project overview. This is a stock [`grafana/grafana-oss`](https://hub.docker.com/r/grafana/grafana-oss) image, configured entirely through provisioning files (datasource + dashboards) baked into the Docker image — there's no custom application code in this branch, no database to persist state in, and no in-UI dashboard editing (`allowUiUpdates: false`) - dashboards are edited here, in git, not in a running Grafana instance.
 
-## Branches
+## What it shows
 
-| Branch | What it is | Run |
-|---|---|---|
-| [`frontend`](https://github.com/smaliaquib/ironclad/tree/frontend) | React + TypeScript (Vite) chat UI, port 5173 | `npm install && npm run dev` |
-| [`router`](https://github.com/smaliaquib/ironclad/tree/router) | Go service, `POST /invoke`, port 8080 | `go run .` |
-| [`agent`](https://github.com/smaliaquib/ironclad/tree/agent) | FastAPI service calling Claude Haiku via AWS Bedrock, port 8000 | `uv sync && uv run uvicorn main:app --reload --port 8000` |
-| [`infra`](https://github.com/smaliaquib/ironclad/tree/infra) | Terraform: AWS ECS Fargate + single ALB + CodePipeline per app | `terraform init && terraform plan -var-file=envs/dev.tfvars` |
+The `router` branch emits one structured [CloudWatch Embedded Metric Format](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format.html) (EMF) log line per completed `/invoke` request — the same line is both a real CloudWatch custom metric (namespace `Ironclad/Usage`, dimensioned by `Model`/`Status` only) and a fully queryable Logs Insights record (with `user_id` as a flat field, not a metric dimension — no cardinality cost as the user base grows). Three dashboards, all reading from CloudWatch directly (no Prometheus, no OpenTelemetry collector):
 
-Each branch has its own README with full setup and config details. Working across all four at once (without repeatedly `git checkout`ing back and forth) is exactly what [git worktrees](https://git-scm.com/docs/git-worktree) are for — one clone, one `.git`, but each branch checked out into its own folder simultaneously:
+- **Usage Overview** (`dashboards/usage-overview.json`) — requests/tokens/cost over time, from CloudWatch Metrics.
+- **Per-User Usage** (`dashboards/per-user-usage.json`) — a table (tokens used, cost, avg latency, daily limit/remaining) grouped by `user_id`, from a CloudWatch **Logs Insights** query against `/ecs/ironclad-dev-router`.
+- **Latency & Errors** (`dashboards/latency-errors.json`) — p50/p95/p99 latency and request counts by status (`success`/`error`/`rate_limited`).
 
-```
-git clone --branch master https://github.com/smaliaquib/ironclad.git ironclad
-cd ironclad
-git worktree add ../frontend frontend
-git worktree add ../router   router
-git worktree add ../agent    agent
-git worktree add ../infra    infra
-```
+**Caveat:** the dashboard JSON in this repo is a best-effort starting point, written without a live Grafana instance to verify the exact CloudWatch datasource query-target schema against (Grafana's CloudWatch panel JSON shape has shifted across versions). On first real deploy, open each panel in edit mode if a query doesn't load — the fix is normally a couple of field names in the query builder, then re-export the panel JSON back into this repo.
 
-This gives you sibling folders `frontend/`, `router/`, `agent/`, `infra/` next to this `ironclad/` (master) checkout — `cd` into whichever one you're working on, no branch switching required. `git worktree list` shows all of them; `git worktree remove <path>` drops one you no longer need.
+## Cost/pricing numbers
 
-## Docker
+The `CostUsd` metric comes from `router/pricing.go`'s hardcoded model-pricing table, not a live AWS pricing API (Bedrock doesn't have one) — treat cost figures as an estimate, and verify the per-model rates against the [Bedrock pricing page](https://aws.aws.amazon.com/bedrock/pricing/) for your region periodically.
 
-Each branch has its own `Dockerfile` (see that branch's README for standalone `docker build`/`docker run` usage). To run all three together, set up the worktrees as above, create `agent/.env` from its `.env.example`, then from this directory:
+## Admin access
+
+`GF_SECURITY_ADMIN_PASSWORD` is fetched from SSM (SecureString) by `entrypoint.sh` at container startup (`aws ssm get-parameter --with-decryption`), never baked into the image or committed anywhere. `infra`'s `modules/grafana` creates the SSM parameter shell only (`lifecycle { ignore_changes = [value] }`, same pattern as the Slack/Gmail credentials) — set the real password once after `terraform apply`:
 
 ```
-docker compose up --build
+aws ssm put-parameter --name <grafana_admin_password_ssm_parameter_name output> --type SecureString --value '<a real password>' --overwrite
 ```
 
-This starts agent (`:8000`), router (`:8080`), and frontend (`:5173`), wired together via `docker-compose.yml`.
+Reachable at `https://<your CloudFront domain>/grafana/` once deployed (path-routed through the same ALB/CloudFront distribution as `frontend`/`router`).
 
-## AWS deployment
+## Run locally
 
-The `infra` branch has Terraform for running this on ECS Fargate: one public ALB path-routes to frontend (`/`) and router (`/invoke*`); agent has no ALB and is reached from router over Cloud Map service discovery. Each app is its own ECS service, ECR repo, CloudWatch log group, and CodePipeline tracking its own branch. Nothing has been applied yet — see that branch's README before running `terraform apply`.
+```
+docker build -t ironclad-grafana .
+docker run --rm -p 3000:3000 -e AWS_REGION=us-east-1 -e AWS_ACCESS_KEY_ID=... -e AWS_SECRET_ACCESS_KEY=... ironclad-grafana
+```
 
-## Flow
+Without `GRAFANA_ADMIN_PASSWORD_SSM_PARAM` set, `entrypoint.sh` skips the SSM fetch entirely and falls back to Grafana's own default (`admin`/`admin`) — fine for local poking around, not for anything real. The CloudWatch datasource needs real AWS credentials with read access to CloudWatch Metrics/Logs Insights to show any data locally.
 
-1. User types a message in the React UI.
-2. Frontend POSTs `{ message }` to the router's `/invoke`.
-3. Router forwards the request to the agent's `/invoke` and streams the SSE response back to the browser untouched.
-4. Agent calls Claude Haiku via Bedrock with streaming enabled and emits SSE events: `token` (text delta), `done`, `error`.
+## CI/CD
+
+`buildspecs/buildspec-ci.yml` — validates every `dashboards/*.json` file is well-formed JSON, then confirms the image actually builds. No app-level tests (there's no application code) - meant to run on PRs/feature branch pushes.
+
+`buildspecs/buildspec-cd.yml` — builds the image, pushes `:latest` and `:<commit-sha>` to ECR, then forces an ECS redeployment on merges to this branch. Expects `ECR_REPO_URL`, `AWS_DEFAULT_REGION`, `AWS_ACCOUNT_ID`, `ECS_CLUSTER`, `ECS_SERVICE` as CodeBuild environment variables (wired up in the `infra` branch) — identical shape to `router`'s CD, since this is a plain ECS Fargate service like every other app here.

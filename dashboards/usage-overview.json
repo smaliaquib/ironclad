@@ -1,0 +1,89 @@
+{
+  "title": "Ironclad - Usage Overview",
+  "uid": "ironclad-usage-overview",
+  "editable": false,
+  "schemaVersion": 39,
+  "time": { "from": "now-24h", "to": "now" },
+  "refresh": "1m",
+  "tags": ["ironclad"],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Requests per minute, by model",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "cloudwatch" },
+      "targets": [
+        {
+          "refId": "A",
+          "namespace": "Ironclad/Usage",
+          "metricName": "RequestCount",
+          "statistic": "Sum",
+          "dimensions": {},
+          "region": "default"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Tokens per minute (input + output)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "cloudwatch" },
+      "targets": [
+        {
+          "refId": "A",
+          "namespace": "Ironclad/Usage",
+          "metricName": "InputTokens",
+          "statistic": "Sum",
+          "dimensions": {},
+          "region": "default"
+        },
+        {
+          "refId": "B",
+          "namespace": "Ironclad/Usage",
+          "metricName": "OutputTokens",
+          "statistic": "Sum",
+          "dimensions": {},
+          "region": "default"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Estimated cost per hour (USD)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "cloudwatch" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "namespace": "Ironclad/Usage",
+          "metricName": "CostUsd",
+          "statistic": "Sum",
+          "dimensions": {},
+          "region": "default"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Total cost today (USD)",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "cloudwatch" },
+      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "namespace": "Ironclad/Usage",
+          "metricName": "CostUsd",
+          "statistic": "Sum",
+          "dimensions": {},
+          "region": "default"
+        }
+      ]
+    }
+  ]
+}

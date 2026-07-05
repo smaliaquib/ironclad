@@ -1,0 +1,28 @@
+{
+  "title": "Ironclad - Per-User Usage",
+  "uid": "ironclad-per-user-usage",
+  "editable": false,
+  "schemaVersion": 39,
+  "time": { "from": "now-24h", "to": "now" },
+  "refresh": "5m",
+  "tags": ["ironclad"],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Usage by user (last 24h)",
+      "type": "table",
+      "gridPos": { "h": 16, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "cloudwatch" },
+      "targets": [
+        {
+          "refId": "A",
+          "queryMode": "Logs",
+          "region": "default",
+          "logGroups": [{ "name": "/ecs/ironclad-dev-router" }],
+          "statsGroups": ["user_id"],
+          "expression": "fields user_id, Model, Status\n| stats sum(TotalTokens) as tokens_used, sum(CostUsd) as cost_usd_total, avg(LatencyMs) as avg_latency_ms, latest(daily_limit) as daily_limit, latest(daily_remaining) as daily_remaining, count(*) as requests by user_id"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+version: 0.2
+
+# CI - validate dashboard JSON + confirm the image actually builds
+# Triggered on: pull requests and feature branch pushes
+
+phases:
+  build:
+    commands:
+      - echo "=== Validating dashboard JSON ==="
+      - |
+        for f in dashboards/*.json; do
+          python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f" || exit 1
+        done
+      - echo "=== Confirming the image builds ==="
+      - docker build -t ironclad-grafana-ci-check .

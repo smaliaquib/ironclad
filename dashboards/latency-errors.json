@@ -1,0 +1,95 @@
+{
+  "title": "Ironclad - Latency & Errors",
+  "uid": "ironclad-latency-errors",
+  "editable": false,
+  "schemaVersion": 39,
+  "time": { "from": "now-24h", "to": "now" },
+  "refresh": "1m",
+  "tags": ["ironclad"],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request latency (p50 / p95 / p99, ms)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "datasource": { "type": "cloudwatch" },
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "namespace": "Ironclad/Usage",
+          "metricName": "LatencyMs",
+          "statistic": "p50",
+          "dimensions": {},
+          "region": "default"
+        },
+        {
+          "refId": "B",
+          "namespace": "Ironclad/Usage",
+          "metricName": "LatencyMs",
+          "statistic": "p95",
+          "dimensions": {},
+          "region": "default"
+        },
+        {
+          "refId": "C",
+          "namespace": "Ironclad/Usage",
+          "metricName": "LatencyMs",
+          "statistic": "p99",
+          "dimensions": {},
+          "region": "default"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Requests by status (success / error / rate_limited)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "cloudwatch" },
+      "targets": [
+        {
+          "refId": "A",
+          "namespace": "Ironclad/Usage",
+          "metricName": "RequestCount",
+          "statistic": "Sum",
+          "dimensions": { "Status": ["success"] },
+          "region": "default"
+        },
+        {
+          "refId": "B",
+          "namespace": "Ironclad/Usage",
+          "metricName": "RequestCount",
+          "statistic": "Sum",
+          "dimensions": { "Status": ["error"] },
+          "region": "default"
+        },
+        {
+          "refId": "C",
+          "namespace": "Ironclad/Usage",
+          "metricName": "RequestCount",
+          "statistic": "Sum",
+          "dimensions": { "Status": ["rate_limited"] },
+          "region": "default"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Tool calls per request (avg)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "cloudwatch" },
+      "targets": [
+        {
+          "refId": "A",
+          "namespace": "Ironclad/Usage",
+          "metricName": "ToolCalls",
+          "statistic": "Average",
+          "dimensions": {},
+          "region": "default"
+        }
+      ]
+    }
+  ]
+}
