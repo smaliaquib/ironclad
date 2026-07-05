@@ -38,7 +38,8 @@
           "datasource": {
             "type": "cloudwatch",
             "uid": "cloudwatch"
-          }
+          },
+          "id": "a"
         }
       ],
       "fieldConfig": {
@@ -94,7 +95,8 @@
           "datasource": {
             "type": "cloudwatch",
             "uid": "cloudwatch"
-          }
+          },
+          "id": "a"
         },
         {
           "refId": "B",
@@ -107,7 +109,8 @@
           "datasource": {
             "type": "cloudwatch",
             "uid": "cloudwatch"
-          }
+          },
+          "id": "b"
         }
       ],
       "fieldConfig": {
@@ -179,7 +182,8 @@
           "datasource": {
             "type": "cloudwatch",
             "uid": "cloudwatch"
-          }
+          },
+          "id": "a"
         }
       ],
       "options": {
@@ -226,7 +230,8 @@
           "datasource": {
             "type": "cloudwatch",
             "uid": "cloudwatch"
-          }
+          },
+          "id": "a"
         }
       ],
       "options": {
