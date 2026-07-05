@@ -11,7 +11,9 @@ The `router` branch emits one structured [CloudWatch Embedded Metric Format](htt
 - **Per-User Usage** (`dashboards/per-user-usage.json`) — a table (tokens used, cost, avg latency, daily limit/remaining) grouped by `user_id`, from a CloudWatch **Logs Insights** query against `/ecs/ironclad-dev-router`.
 - **Latency & Errors** (`dashboards/latency-errors.json`) — p50/p95/p99 latency and request counts by status (`success`/`error`/`rate_limited`).
 
-**Caveat:** the dashboard JSON in this repo is a best-effort starting point, written without a live Grafana instance to verify the exact CloudWatch datasource query-target schema against (Grafana's CloudWatch panel JSON shape has shifted across versions). On first real deploy, open each panel in edit mode if a query doesn't load — the fix is normally a couple of field names in the query builder, then re-export the panel JSON back into this repo.
+**Verified live against a real deployed instance (via `curl -u admin:<password> .../api/ds/query`, bypassing the need for a browser).** Two real bugs found and fixed this way:
+1. Every panel/target needs an explicit `"datasource": {"type": "cloudwatch", "uid": "cloudwatch"}` — omitting the `uid` (only `type`) fails outright with `"Query does not contain a valid data source identifier"`, even though the API happily infers it when you pass a bare `{"type": "cloudwatch"}` directly to `/api/ds/query` yourself. `provisioning/datasources/cloudwatch.yaml` pins a fixed `uid: cloudwatch` (not Grafana's auto-generated random hash) so this stays stable across container restarts — there's no persistent volume here, so a fresh restart re-runs provisioning from scratch.
+2. The Logs Insights query (`per-user-usage.json`) needs the log group's **ARN**, not just its name (`"LogGroup cannot be empty"` otherwise) — `arn:aws:logs:<region>:<account-id>:log-group:/ecs/ironclad-dev-router:*` is baked in, so it's specific to this AWS account; update it if you fork this into a different account.
 
 ## Cost/pricing numbers
 

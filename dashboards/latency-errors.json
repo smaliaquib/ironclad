@@ -3,17 +3,35 @@
   "uid": "ironclad-latency-errors",
   "editable": false,
   "schemaVersion": 39,
-  "time": { "from": "now-24h", "to": "now" },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
   "refresh": "1m",
-  "tags": ["ironclad"],
+  "tags": [
+    "ironclad"
+  ],
   "panels": [
     {
       "id": 1,
       "title": "Request latency (p50 / p95 / p99, ms)",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
-      "datasource": { "type": "cloudwatch" },
-      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "cloudwatch"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
       "targets": [
         {
           "refId": "A",
@@ -22,7 +40,11 @@
           "statistic": "p50",
           "dimensions": {},
           "matchExact": false,
-          "region": "default"
+          "region": "default",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          }
         },
         {
           "refId": "B",
@@ -31,7 +53,11 @@
           "statistic": "p95",
           "dimensions": {},
           "matchExact": false,
-          "region": "default"
+          "region": "default",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          }
         },
         {
           "refId": "C",
@@ -40,7 +66,11 @@
           "statistic": "p99",
           "dimensions": {},
           "matchExact": false,
-          "region": "default"
+          "region": "default",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          }
         }
       ]
     },
@@ -48,35 +78,67 @@
       "id": 2,
       "title": "Requests by status (success / error / rate_limited)",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-      "datasource": { "type": "cloudwatch" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "cloudwatch"
+      },
       "targets": [
         {
           "refId": "A",
           "namespace": "Ironclad/Usage",
           "metricName": "RequestCount",
           "statistic": "Sum",
-          "dimensions": { "Status": ["success"] },
+          "dimensions": {
+            "Status": [
+              "success"
+            ]
+          },
           "matchExact": false,
-          "region": "default"
+          "region": "default",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          }
         },
         {
           "refId": "B",
           "namespace": "Ironclad/Usage",
           "metricName": "RequestCount",
           "statistic": "Sum",
-          "dimensions": { "Status": ["error"] },
+          "dimensions": {
+            "Status": [
+              "error"
+            ]
+          },
           "matchExact": false,
-          "region": "default"
+          "region": "default",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          }
         },
         {
           "refId": "C",
           "namespace": "Ironclad/Usage",
           "metricName": "RequestCount",
           "statistic": "Sum",
-          "dimensions": { "Status": ["rate_limited"] },
+          "dimensions": {
+            "Status": [
+              "rate_limited"
+            ]
+          },
           "matchExact": false,
-          "region": "default"
+          "region": "default",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          }
         }
       ]
     },
@@ -84,8 +146,16 @@
       "id": 3,
       "title": "Tool calls per request (avg)",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
-      "datasource": { "type": "cloudwatch" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "cloudwatch"
+      },
       "targets": [
         {
           "refId": "A",
@@ -94,7 +164,11 @@
           "statistic": "Average",
           "dimensions": {},
           "matchExact": false,
-          "region": "default"
+          "region": "default",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          }
         }
       ]
     }

@@ -2,6 +2,12 @@ apiVersion: 1
 
 datasources:
   - name: CloudWatch
+    # Fixed, human-readable uid (not Grafana's auto-generated random hash) -
+    # there's no persistent volume here, so a fresh container restart
+    # re-runs this provisioning from scratch. Every dashboard JSON in this
+    # repo references this exact uid; without pinning it, a restart could
+    # silently break every panel's datasource reference.
+    uid: cloudwatch
     type: cloudwatch
     access: proxy
     isDefault: true

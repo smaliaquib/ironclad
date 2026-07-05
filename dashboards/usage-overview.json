@@ -3,16 +3,29 @@
   "uid": "ironclad-usage-overview",
   "editable": false,
   "schemaVersion": 39,
-  "time": { "from": "now-24h", "to": "now" },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
   "refresh": "1m",
-  "tags": ["ironclad"],
+  "tags": [
+    "ironclad"
+  ],
   "panels": [
     {
       "id": 1,
       "title": "Requests per minute, by model",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
-      "datasource": { "type": "cloudwatch" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "cloudwatch"
+      },
       "targets": [
         {
           "refId": "A",
@@ -21,7 +34,11 @@
           "statistic": "Sum",
           "dimensions": {},
           "matchExact": false,
-          "region": "default"
+          "region": "default",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          }
         }
       ]
     },
@@ -29,8 +46,16 @@
       "id": 2,
       "title": "Tokens per minute (input + output)",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
-      "datasource": { "type": "cloudwatch" },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "cloudwatch"
+      },
       "targets": [
         {
           "refId": "A",
@@ -39,7 +64,11 @@
           "statistic": "Sum",
           "dimensions": {},
           "matchExact": false,
-          "region": "default"
+          "region": "default",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          }
         },
         {
           "refId": "B",
@@ -48,7 +77,11 @@
           "statistic": "Sum",
           "dimensions": {},
           "matchExact": false,
-          "region": "default"
+          "region": "default",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          }
         }
       ]
     },
@@ -56,9 +89,22 @@
       "id": 3,
       "title": "Estimated cost per hour (USD)",
       "type": "timeseries",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-      "datasource": { "type": "cloudwatch" },
-      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "cloudwatch"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
       "targets": [
         {
           "refId": "A",
@@ -67,7 +113,11 @@
           "statistic": "Sum",
           "dimensions": {},
           "matchExact": false,
-          "region": "default"
+          "region": "default",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          }
         }
       ]
     },
@@ -75,9 +125,22 @@
       "id": 4,
       "title": "Total cost today (USD)",
       "type": "stat",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
-      "datasource": { "type": "cloudwatch" },
-      "fieldConfig": { "defaults": { "unit": "currencyUSD" }, "overrides": [] },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "cloudwatch"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
       "targets": [
         {
           "refId": "A",
@@ -86,7 +149,11 @@
           "statistic": "Sum",
           "dimensions": {},
           "matchExact": false,
-          "region": "default"
+          "region": "default",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          }
         }
       ]
     }

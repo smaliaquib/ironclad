@@ -3,24 +3,48 @@
   "uid": "ironclad-per-user-usage",
   "editable": false,
   "schemaVersion": 39,
-  "time": { "from": "now-24h", "to": "now" },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
   "refresh": "5m",
-  "tags": ["ironclad"],
+  "tags": [
+    "ironclad"
+  ],
   "panels": [
     {
       "id": 1,
       "title": "Usage by user (last 24h)",
       "type": "table",
-      "gridPos": { "h": 16, "w": 24, "x": 0, "y": 0 },
-      "datasource": { "type": "cloudwatch" },
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "cloudwatch",
+        "uid": "cloudwatch"
+      },
       "targets": [
         {
           "refId": "A",
           "queryMode": "Logs",
           "region": "default",
-          "logGroups": [{ "name": "/ecs/ironclad-dev-router" }],
-          "statsGroups": ["user_id"],
-          "expression": "fields user_id, Model, Status\n| stats sum(TotalTokens) as tokens_used, sum(CostUsd) as cost_usd_total, avg(LatencyMs) as avg_latency_ms, latest(daily_limit) as limit_now, latest(daily_remaining) as remaining_now, count(*) as requests by user_id"
+          "logGroups": [
+            {
+              "name": "/ecs/ironclad-dev-router",
+              "arn": "arn:aws:logs:us-east-1:628593563433:log-group:/ecs/ironclad-dev-router:*"
+            }
+          ],
+          "statsGroups": [
+            "user_id"
+          ],
+          "expression": "fields user_id, Model, Status\n| stats sum(TotalTokens) as tokens_used, sum(CostUsd) as cost_usd_total, avg(LatencyMs) as avg_latency_ms, latest(daily_limit) as limit_now, latest(daily_remaining) as remaining_now, count(*) as requests by user_id",
+          "datasource": {
+            "type": "cloudwatch",
+            "uid": "cloudwatch"
+          }
         }
       ]
     }
