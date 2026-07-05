@@ -8,10 +8,18 @@ version: 0.2
 #   AWS_DEFAULT_REGION   - target region
 #   AWS_ACCOUNT_ID       - AWS account ID
 #   ECS_CLUSTER          - ECS cluster name
-#   ECS_SERVICE          - ECS service name
+#   ECS_SERVICE          - ECS service name (same string as the task definition family name)
 #   COGNITO_USER_POOL_ID - Cognito user pool id (public identifier, baked into the bundle)
 #   COGNITO_CLIENT_ID    - Cognito SPA app client id (public identifier, no secret)
 #   ENABLE_AUTH          - mirrors the infra's enable_auth - "true"/"false"
+#
+# --task-definition $ECS_SERVICE matters, not just --force-new-deployment:
+# Terraform registers new task definition revisions (env var/IAM changes) but
+# the ECS service has lifecycle { ignore_changes = [task_definition] }, so it
+# never switches to them on its own. Passing the family name (no revision
+# number) tells ECS "use whatever the latest active revision is" on every
+# deploy, so newer Terraform-registered revisions actually get picked up
+# instead of the service staying pinned to whatever revision it last used.
 #
 # VITE_ROUTER_URL is deliberately NOT set here - it defaults to empty (see
 # Dockerfile), meaning the built app calls /invoke as a same-origin relative
@@ -57,6 +65,7 @@ phases:
         aws ecs update-service \
           --cluster $ECS_CLUSTER \
           --service $ECS_SERVICE \
+          --task-definition $ECS_SERVICE \
           --force-new-deployment \
           --region $AWS_DEFAULT_REGION
       - echo "=== Deployment triggered for $ECS_CLUSTER / $ECS_SERVICE ==="
