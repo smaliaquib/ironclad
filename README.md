@@ -36,7 +36,7 @@ Or pass AWS credentials directly: `-e AWS_ACCESS_KEY_ID=... -e AWS_SECRET_ACCESS
 
 - `event: sources` — `{ "sources": string[] }`, source document filenames - only sent if a knowledge base is configured and retrieval returned matches, always before any `token` events
 - `event: token` — `{ "text": string }` delta
-- `event: usage` — `{ "input_tokens": number, "output_tokens": number }`, real Bedrock token counts summed across every model call the tool-use loop made this turn (a tool-calling exchange makes more than one) - the router (not this service) uses this to enforce per-user daily limits
+- `event: usage` — `{ "input_tokens": number, "output_tokens": number, "model_id": string, "tool_calls": number }`, real Bedrock token counts summed across every model call the tool-use loop made this turn (a tool-calling exchange makes more than one) - the router (not this service) uses this to enforce per-user daily limits and to emit its own per-request usage/cost/latency metrics (see the `router` branch's README)
 - `event: done` — stream finished
 - `event: error` — `{ "message": string }`
 

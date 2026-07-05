@@ -127,6 +127,7 @@ async def run_agent(message: str):
 
         total_input_tokens = 0
         total_output_tokens = 0
+        tool_calls = 0
         async for event in agent.astream_events(
             {"messages": [{"role": "user", "content": prompt}]}, version="v2"
         ):
@@ -146,16 +147,22 @@ async def run_agent(message: str):
                 if usage:
                     total_input_tokens += usage.get("input_tokens", 0) or 0
                     total_output_tokens += usage.get("output_tokens", 0) or 0
+            elif event["event"] == "on_tool_end":
+                tool_calls += 1
 
         # The router watches for this event to enforce per-user daily token
-        # limits; it doesn't change anything for a client that ignores it.
-        # Summed across every model call the tool-use loop made this turn,
-        # not just one - a tool-calling exchange makes more than one.
+        # limits (and, since this session, to emit its own richer usage
+        # metrics/logs - model_id + tool_calls ride along for that). Doesn't
+        # change anything for a client that ignores the extra fields. Token
+        # counts are summed across every model call the tool-use loop made
+        # this turn, not just one - a tool-calling exchange makes more than one.
         yield sse_event(
             "usage",
             {
                 "input_tokens": total_input_tokens,
                 "output_tokens": total_output_tokens,
+                "model_id": MODEL,
+                "tool_calls": tool_calls,
             },
         )
         yield sse_event("done", {})
