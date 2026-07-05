@@ -20,7 +20,7 @@
           "region": "default",
           "logGroups": [{ "name": "/ecs/ironclad-dev-router" }],
           "statsGroups": ["user_id"],
-          "expression": "fields user_id, Model, Status\n| stats sum(TotalTokens) as tokens_used, sum(CostUsd) as cost_usd_total, avg(LatencyMs) as avg_latency_ms, latest(daily_limit) as daily_limit, latest(daily_remaining) as daily_remaining, count(*) as requests by user_id"
+          "expression": "fields user_id, Model, Status\n| stats sum(TotalTokens) as tokens_used, sum(CostUsd) as cost_usd_total, avg(LatencyMs) as avg_latency_ms, latest(daily_limit) as limit_now, latest(daily_remaining) as remaining_now, count(*) as requests by user_id"
         }
       ]
     }

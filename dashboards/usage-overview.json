@@ -20,6 +20,7 @@
           "metricName": "RequestCount",
           "statistic": "Sum",
           "dimensions": {},
+          "matchExact": false,
           "region": "default"
         }
       ]
@@ -37,6 +38,7 @@
           "metricName": "InputTokens",
           "statistic": "Sum",
           "dimensions": {},
+          "matchExact": false,
           "region": "default"
         },
         {
@@ -45,6 +47,7 @@
           "metricName": "OutputTokens",
           "statistic": "Sum",
           "dimensions": {},
+          "matchExact": false,
           "region": "default"
         }
       ]
@@ -63,6 +66,7 @@
           "metricName": "CostUsd",
           "statistic": "Sum",
           "dimensions": {},
+          "matchExact": false,
           "region": "default"
         }
       ]
@@ -81,6 +85,7 @@
           "metricName": "CostUsd",
           "statistic": "Sum",
           "dimensions": {},
+          "matchExact": false,
           "region": "default"
         }
       ]

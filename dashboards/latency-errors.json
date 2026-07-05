@@ -21,6 +21,7 @@
           "metricName": "LatencyMs",
           "statistic": "p50",
           "dimensions": {},
+          "matchExact": false,
           "region": "default"
         },
         {
@@ -29,6 +30,7 @@
           "metricName": "LatencyMs",
           "statistic": "p95",
           "dimensions": {},
+          "matchExact": false,
           "region": "default"
         },
         {
@@ -37,6 +39,7 @@
           "metricName": "LatencyMs",
           "statistic": "p99",
           "dimensions": {},
+          "matchExact": false,
           "region": "default"
         }
       ]
@@ -54,6 +57,7 @@
           "metricName": "RequestCount",
           "statistic": "Sum",
           "dimensions": { "Status": ["success"] },
+          "matchExact": false,
           "region": "default"
         },
         {
@@ -62,6 +66,7 @@
           "metricName": "RequestCount",
           "statistic": "Sum",
           "dimensions": { "Status": ["error"] },
+          "matchExact": false,
           "region": "default"
         },
         {
@@ -70,6 +75,7 @@
           "metricName": "RequestCount",
           "statistic": "Sum",
           "dimensions": { "Status": ["rate_limited"] },
+          "matchExact": false,
           "region": "default"
         }
       ]
@@ -87,6 +93,7 @@
           "metricName": "ToolCalls",
           "statistic": "Average",
           "dimensions": {},
+          "matchExact": false,
           "region": "default"
         }
       ]
