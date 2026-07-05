@@ -41,12 +41,11 @@ phases:
       - echo "=== Vendoring pydantic for the Lambda zips (cross-platform wheels, matches the Lambda runtime regardless of the build host) ==="
       - |
         pip3 install \
-          pydantic pydantic-core annotated-types typing-extensions typing-inspection \
+          pydantic \
           --target ./vendor \
           --platform manylinux2014_x86_64 \
           --only-binary=:all: \
-          --python-version 3.12 \
-          --no-deps
+          --python-version 3.12
 
   build:
     commands:
