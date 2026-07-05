@@ -17,27 +17,27 @@
     "title": "AddNumbersInput",
     "type": "object"
   },
-  "brave_news_search": {
+  "duckduckgo_fetch": {
     "properties": {
-      "count": {
-        "default": 10,
-        "maximum": 20,
-        "minimum": 1,
-        "title": "Count",
+      "max_chars": {
+        "default": 5000,
+        "maximum": 20000,
+        "minimum": 500,
+        "title": "Max Chars",
         "type": "integer"
       },
-      "query": {
-        "title": "Query",
+      "url": {
+        "title": "Url",
         "type": "string"
       }
     },
     "required": [
-      "query"
+      "url"
     ],
-    "title": "BraveNewsSearchInput",
+    "title": "DuckDuckGoFetchInput",
     "type": "object"
   },
-  "brave_web_search": {
+  "duckduckgo_search": {
     "properties": {
       "count": {
         "default": 10,
@@ -54,7 +54,7 @@
     "required": [
       "query"
     ],
-    "title": "BraveWebSearchInput",
+    "title": "DuckDuckGoSearchInput",
     "type": "object"
   },
   "echo": {
