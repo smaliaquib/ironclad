@@ -88,7 +88,7 @@ func TestTrackUsageEvent(t *testing.T) {
 		"data: {\"text\":\"hi\"}\n",
 		"\n",
 		"event: usage\n",
-		"data: {\"input_tokens\":12,\"output_tokens\":34}\n",
+		"data: {\"input_tokens\":12,\"output_tokens\":34,\"model_id\":\"us.anthropic.claude-haiku-4-5-20251001-v1:0\",\"tool_calls\":2}\n",
 		"\n",
 		"event: done\n",
 		"data: {}\n",
@@ -103,6 +103,12 @@ func TestTrackUsageEvent(t *testing.T) {
 
 	if usage.InputTokens != 12 || usage.OutputTokens != 34 {
 		t.Fatalf("expected usage {12, 34}, got %+v", usage)
+	}
+	if usage.ModelID != "us.anthropic.claude-haiku-4-5-20251001-v1:0" {
+		t.Fatalf("expected model_id to be parsed, got %q", usage.ModelID)
+	}
+	if usage.ToolCalls != 2 {
+		t.Fatalf("expected tool_calls 2, got %d", usage.ToolCalls)
 	}
 }
 

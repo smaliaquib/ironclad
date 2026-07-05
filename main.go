@@ -116,12 +116,15 @@ func handleUsage(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleInvoke(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var userID string
+	var usedToday int
 	if requireAuth {
 		var err error
 		userID, err = verifyIDToken(r)
@@ -133,15 +136,20 @@ func handleInvoke(w http.ResponseWriter, r *http.Request) {
 		used, err := getUsedToday(r.Context(), userID)
 		if err != nil {
 			log.Printf("usage check failed: %v", err)
-		} else if used >= dailyTokenLimit {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusTooManyRequests)
-			json.NewEncoder(w).Encode(map[string]any{
-				"error": "daily token limit exceeded",
-				"used":  used,
-				"limit": dailyTokenLimit,
-			})
-			return
+		} else {
+			usedToday = used
+			if used >= dailyTokenLimit {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusTooManyRequests)
+				json.NewEncoder(w).Encode(map[string]any{
+					"error": "daily token limit exceeded",
+					"used":  used,
+					"limit": dailyTokenLimit,
+				})
+				emitUsageMetric(userID, "", "rate_limited", 0, 0, 0,
+					float64(time.Since(start).Milliseconds()), used, dailyTokenLimit)
+				return
+			}
 		}
 	}
 
@@ -172,6 +180,10 @@ func handleInvoke(w http.ResponseWriter, r *http.Request) {
 	resp, err := client.Do(agentReq)
 	if err != nil {
 		http.Error(w, "agent unavailable", http.StatusBadGateway)
+		if requireAuth {
+			emitUsageMetric(userID, "", "error", 0, 0, 0,
+				float64(time.Since(start).Milliseconds()), usedToday, dailyTokenLimit)
+		}
 		return
 	}
 	defer resp.Body.Close()
@@ -202,22 +214,39 @@ func handleInvoke(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if requireAuth && usage.InputTokens+usage.OutputTokens > 0 {
-		newTotal, err := recordUsage(context.Background(), userID, usage.InputTokens+usage.OutputTokens)
-		if err != nil {
-			log.Printf("recording usage failed: %v", err)
-		} else {
-			fmt.Fprintf(w, "event: usage_total\ndata: {\"used\":%d,\"limit\":%d}\n\n", newTotal, dailyTokenLimit)
-			if ok {
-				flusher.Flush()
+	if requireAuth {
+		latencyMs := float64(time.Since(start).Milliseconds())
+		tokens := usage.InputTokens + usage.OutputTokens
+
+		if tokens > 0 {
+			status := "success"
+			dailyUsed := tokens
+			newTotal, err := recordUsage(context.Background(), userID, tokens)
+			if err != nil {
+				log.Printf("recording usage failed: %v", err)
+			} else {
+				dailyUsed = newTotal
+				fmt.Fprintf(w, "event: usage_total\ndata: {\"used\":%d,\"limit\":%d}\n\n", newTotal, dailyTokenLimit)
+				if ok {
+					flusher.Flush()
+				}
 			}
+			emitUsageMetric(userID, usage.ModelID, status, usage.InputTokens, usage.OutputTokens,
+				usage.ToolCalls, latencyMs, dailyUsed, dailyTokenLimit)
+		} else {
+			// Stream ended with no usable token count - the agent hit its
+			// own error path (event: error) rather than completing normally.
+			emitUsageMetric(userID, usage.ModelID, "error", 0, 0, usage.ToolCalls,
+				latencyMs, usedToday, dailyTokenLimit)
 		}
 	}
 }
 
 type usageEvent struct {
-	InputTokens  int `json:"input_tokens"`
-	OutputTokens int `json:"output_tokens"`
+	InputTokens  int    `json:"input_tokens"`
+	OutputTokens int    `json:"output_tokens"`
+	ModelID      string `json:"model_id"`
+	ToolCalls    int    `json:"tool_calls"`
 }
 
 // trackUsageEvent watches the SSE stream being proxied through for an

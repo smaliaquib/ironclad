@@ -18,6 +18,12 @@ go run .
 - `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`, `AWS_REGION` — required when `REQUIRE_AUTH=true`, used to verify the JWT (issuer/audience) and fetch its JWKS.
 - `USAGE_TABLE_NAME`, `DAILY_TOKEN_LIMIT` — required when `REQUIRE_AUTH=true`: the DynamoDB table tracking each user's daily Bedrock token usage, and the cap (tokens/user/UTC day) before `/invoke` starts returning `429`. The router watches the agent's SSE stream for a `usage` event to record actual usage after each request.
 
+## Observability
+
+Every completed `/invoke` request (success, error, or rate-limited) emits one structured [CloudWatch Embedded Metric Format](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format.html) JSON line to stdout (`metrics.go`'s `emitUsageMetric`, via `fmt.Println` — not `log.Println`, which would prepend a timestamp and break CloudWatch's auto-detection of the `_aws` block). CloudWatch Logs auto-parses that block into real custom metrics (namespace `Ironclad/Usage`, dimensioned by `Model`+`Status` only — bounded, cheap), while the *same* line stays fully queryable via Logs Insights, with `user_id` as a flat field for per-user breakdowns (deliberately not a metric dimension — no cardinality cost as the user base grows). See the `grafana` branch for the dashboards built on top of this.
+
+`pricing.go`'s `modelPricing` map is a manually-maintained table (Bedrock has no live pricing API) used to estimate `CostUsd` — verify the per-model rates against the [Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/) for your region, and add an entry whenever `BEDROCK_MODEL_ID` changes to something not already in the table (unknown models report $0 cost with a logged warning, not a crash).
+
 ### Docker
 
 ```
