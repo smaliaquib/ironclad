@@ -62,8 +62,17 @@ def _get_access_token() -> str:
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         method="POST",
     )
-    with urllib.request.urlopen(request, timeout=10) as response:
-        payload = json.loads(response.read().decode())
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            raw = response.read().decode()
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode()
+        raise RuntimeError(f"Gmail token exchange failed: {e.code} {detail}") from e
+
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Gmail token exchange returned a non-JSON body: {raw[:300]!r}") from e
 
     _cached_access_token = payload["access_token"]
     _access_token_expires_at = time.time() + payload.get("expires_in", 3600) - 60
@@ -90,10 +99,17 @@ def call(method: str, path: str, params: dict | None = None, json_body: dict | N
     )
     try:
         with urllib.request.urlopen(request, timeout=15) as response:
-            return json.loads(response.read().decode())
+            raw = response.read().decode()
     except urllib.error.HTTPError as e:
         detail = e.read().decode()
         raise RuntimeError(f"Gmail API error ({method} {path}): {e.code} {detail}") from e
+
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            f"Gmail API returned a non-JSON body ({method} {path}): {raw[:300]!r}"
+        ) from e
 
 
 def build_raw_message(
