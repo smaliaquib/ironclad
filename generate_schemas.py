@@ -14,6 +14,10 @@ from pathlib import Path
 
 from tools.add_numbers import NAME as ADD_NUMBERS_NAME
 from tools.add_numbers import AddNumbersInput
+from tools.brave_news_search import NAME as BRAVE_NEWS_SEARCH_NAME
+from tools.brave_news_search import BraveNewsSearchInput
+from tools.brave_web_search import NAME as BRAVE_WEB_SEARCH_NAME
+from tools.brave_web_search import BraveWebSearchInput
 from tools.echo import NAME as ECHO_NAME
 from tools.echo import EchoInput
 from tools.get_time import NAME as GET_TIME_NAME
@@ -48,6 +52,8 @@ def main() -> None:
         GMAIL_READ_NAME: GmailReadInput.model_json_schema(),
         GMAIL_SEND_NAME: GmailSendInput.model_json_schema(),
         GMAIL_REPLY_NAME: GmailReplyInput.model_json_schema(),
+        BRAVE_WEB_SEARCH_NAME: BraveWebSearchInput.model_json_schema(),
+        BRAVE_NEWS_SEARCH_NAME: BraveNewsSearchInput.model_json_schema(),
     }
     OUTPUT_PATH.write_text(json.dumps(schemas, indent=2, sort_keys=True) + "\n")
 

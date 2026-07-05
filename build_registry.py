@@ -23,6 +23,8 @@ TOOLS = [
     "gmail_read",
     "gmail_send",
     "gmail_reply",
+    "brave_web_search",
+    "brave_news_search",
 ]
 
 

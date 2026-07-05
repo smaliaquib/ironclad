@@ -3,7 +3,7 @@
 
 The Lambda-backed MCP tools for [Ironclad](https://github.com/smaliaquib/ironclad) — see the `master` branch for the full project overview. These tools are called by the `mcp-gateway` service, which reads their catalog from an SSM Parameter (the "tool registry") that this repo's own CD pipeline writes on every deploy.
 
-Three deliberately trivial ("dummy") tools proving the gateway's Lambda dispatch works end-to-end, plus real Slack and Gmail tools:
+Three deliberately trivial ("dummy") tools proving the gateway's Lambda dispatch works end-to-end, plus real Slack, Gmail, and Brave Search tools:
 
 | Tool | Input | Output |
 |---|---|---|
@@ -17,6 +17,8 @@ Three deliberately trivial ("dummy") tools proving the gateway's Lambda dispatch
 | `gmail_read` | `{ "message_id": string }` | `{ "subject", "sender", "to", "date", "snippet", "body" }` |
 | `gmail_send` | `{ "to": string, "subject": string, "body": string }` | `{ "id": string, "thread_id": string }` |
 | `gmail_reply` | `{ "message_id": string, "body": string }` | `{ "id": string, "thread_id": string }` |
+| `brave_web_search` | `{ "query": string, "count"?: number (1-20, default 10) }` | `{ "results": [{ "title", "url", "description" }] }` |
+| `brave_news_search` | `{ "query": string, "count"?: number (1-20, default 10) }` | `{ "results": [{ "title", "url", "description", "age" }] }` |
 
 Each tool defines a [Pydantic](https://docs.pydantic.dev/) `BaseModel` for its input and validates every call against it - a bad call gets back `{"error": "..."}` instead of crashing the Lambda. There is no hand-written JSON Schema anywhere in this repo or in `infra`: the schema published in the tool registry is generated directly from these models (`model_json_schema()`), so what the gateway advertises can never drift from what the Lambda actually accepts.
 
@@ -44,6 +46,15 @@ One-time manual setup (the OAuth consent step needs a real browser + your Google
 3. Run the printed command (fill in `<gmail_credentials_ssm_parameter_name output>` from `terraform output` in the `infra` branch) to store `{client_id, client_secret, refresh_token}` in SSM.
 
 Google refresh tokens for apps still in "Testing" publishing status expire after 7 days - either add yourself as a test user and re-run step 2 periodically, or publish the OAuth consent screen (still fine for personal single-user use) to get a non-expiring refresh token.
+
+### Brave Search tools setup
+
+The two `brave_*` tools share `tools/_brave_client.py`, a thin Brave Search API client (stdlib `urllib`, no extra vendored dependency). Unlike Gmail, auth is a single static API key with no expiry/scopes to reinstall, so it's cached for the life of the warm execution environment - same simple pattern as the Slack bot token. `infra` creates the SSM parameter shell and grants exactly these 2 functions `ssm:GetParameter` + `kms:Decrypt`, gated by `needs_brave_api_key = true`.
+
+One-time manual setup after `terraform apply`:
+
+1. Get an API key from the [Brave Search API dashboard](https://brave.com/search/api/) (free tier available).
+2. `aws ssm put-parameter --name <brave_api_key_ssm_parameter_name output> --type SecureString --value BSA... --overwrite`
 
 ## Run tools locally
 
@@ -73,7 +84,7 @@ uv run pytest tests/unit/ -v
 
 ## Infra
 
-`infra`'s `modules/mcp-tools` creates each tool's `aws_lambda_function` (IAM role + a placeholder zip only - `lifecycle { ignore_changes = [filename, source_code_hash] }`) and the registry `aws_ssm_parameter` (also placeholder, `ignore_changes = [value]`). Neither the real code nor the real registry content ever comes from Terraform - both come from this repo's own CD pipeline, same principle as how the ECS-based services (`frontend`/`router`/`agent`/`mcp-gateway`) get their container image from their own CD, not from `terraform apply`. The 3 Slack tools additionally get a `SLACK_BOT_TOKEN_SSM_PARAM` env var and an inline IAM policy for the Slack token parameter, gated by `needs_slack_token = true`; the 4 Gmail tools get `GMAIL_CREDENTIALS_SSM_PARAM` and the equivalent IAM grant, gated by `needs_gmail_credentials = true` - both flags live on that tool's entry in `mcp_gateway_tools`.
+`infra`'s `modules/mcp-tools` creates each tool's `aws_lambda_function` (IAM role + a placeholder zip only - `lifecycle { ignore_changes = [filename, source_code_hash] }`) and the registry `aws_ssm_parameter` (also placeholder, `ignore_changes = [value]`). Neither the real code nor the real registry content ever comes from Terraform - both come from this repo's own CD pipeline, same principle as how the ECS-based services (`frontend`/`router`/`agent`/`mcp-gateway`) get their container image from their own CD, not from `terraform apply`. The 3 Slack tools additionally get a `SLACK_BOT_TOKEN_SSM_PARAM` env var and an inline IAM policy for the Slack token parameter, gated by `needs_slack_token = true`; the 4 Gmail tools get `GMAIL_CREDENTIALS_SSM_PARAM` and the equivalent IAM grant, gated by `needs_gmail_credentials = true`; the 2 Brave tools get `BRAVE_API_KEY_SSM_PARAM`, gated by `needs_brave_api_key = true` - all three flags live on that tool's entry in `mcp_gateway_tools`.
 
 ## CI/CD
 
@@ -81,7 +92,7 @@ uv run pytest tests/unit/ -v
 
 `buildspecs/buildspec-cd.yml`, on merges to this branch:
 1. Vendors `pydantic` (and its compiled dependency `pydantic-core`) into each tool's deployment zip via `pip install --platform manylinux2014_x86_64 --only-binary=:all:` - the base Python 3.12 Lambda runtime doesn't include it, and this fetches the correct prebuilt wheel regardless of the CodeBuild host's own platform. `boto3` needs no vendoring - it ships with the Lambda runtime already.
-2. `aws lambda update-function-code`s each of the 10 functions (the 3 `slack_*` zips also bundle `tools/_slack_client.py`, the 4 `gmail_*` zips also bundle `tools/_gmail_client.py`).
+2. `aws lambda update-function-code`s each of the 12 functions (the 3 `slack_*` zips also bundle `tools/_slack_client.py`, the 4 `gmail_*` zips also bundle `tools/_gmail_client.py`, the 2 `brave_*` zips also bundle `tools/_brave_client.py`).
 3. Regenerates the schemas, looks up each function's real ARN (`aws lambda get-function`), and `aws ssm put-parameter --overwrite`s the tool registry with the fresh `{name, description, input_schema, lambda_arn}` catalog.
 
 Expects `AWS_DEFAULT_REGION`, `NAME_PREFIX`, and `REGISTRY_SSM_PARAM` as CodeBuild environment variables (wired up in the `infra` branch). Every deploy writes exactly one new SSM parameter version - `aws ssm get-parameter-history --name <REGISTRY_SSM_PARAM>` shows the full history, one entry per deploy.
