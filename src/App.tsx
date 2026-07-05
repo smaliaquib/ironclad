@@ -10,6 +10,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   error?: boolean;
+  sources?: string[];
 }
 
 const SUGGESTIONS = [
@@ -90,6 +91,13 @@ function App({ onSignOut, onUnauthorized }: AppProps) {
           onUnauthorized();
         },
         onUsageUpdate: (used, limit) => setUsage({ used, limit }),
+        onSources: (sources) => {
+          setMessages((prev) => {
+            const next = [...prev];
+            next[next.length - 1] = { ...next[next.length - 1], sources };
+            return next;
+          });
+        },
       },
       controller.signal,
     );
@@ -167,6 +175,9 @@ function App({ onSignOut, onUnauthorized }: AppProps) {
                       m.content
                     )}
                   </div>
+                  {m.sources && m.sources.length > 0 && (
+                    <div className="sources-line">Sources: {m.sources.join(", ")}</div>
+                  )}
                 </div>
               </div>
             );

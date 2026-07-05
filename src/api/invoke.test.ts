@@ -118,6 +118,32 @@ describe("invokeAgent", () => {
     expect(onUsageUpdate).toHaveBeenCalledWith(1234, 10000);
   });
 
+  it("calls onSources for a sources event sent before tokens", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          sseResponse([
+            'event: sources\ndata: {"sources":["a.pdf","b.txt"]}\n\n',
+            'event: token\ndata: {"text":"hi"}\n\n',
+            "event: done\ndata: {}\n\n",
+          ]),
+        ),
+    );
+
+    const onToken = vi.fn();
+    const onDone = vi.fn();
+    const onError = vi.fn();
+    const onUnauthorized = vi.fn();
+    const onSources = vi.fn();
+
+    await invokeAgent("hi", { onToken, onDone, onError, onUnauthorized, onSources });
+
+    expect(onSources).toHaveBeenCalledWith(["a.pdf", "b.txt"]);
+    expect(onToken).toHaveBeenCalledWith("hi");
+  });
+
   it("calls onError with a friendly message on a 429 response", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 429 })));
 

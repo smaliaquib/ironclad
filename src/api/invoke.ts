@@ -13,6 +13,8 @@ export interface InvokeCallbacks {
   onUnauthorized: () => void;
   /** The router appends this after "done" with the caller's updated daily total. */
   onUsageUpdate?: (used: number, limit: number) => void;
+  /** The agent sends this before any tokens, if the knowledge base returned matches. */
+  onSources?: (sources: string[]) => void;
 }
 
 interface SSEEvent {
@@ -41,7 +43,7 @@ export async function invokeAgent(
   callbacks: InvokeCallbacks,
   signal?: AbortSignal,
 ): Promise<void> {
-  const { onToken, onDone, onError, onUnauthorized, onUsageUpdate } = callbacks;
+  const { onToken, onDone, onError, onUnauthorized, onUsageUpdate, onSources } = callbacks;
 
   let response: Response;
   try {
@@ -91,6 +93,9 @@ export async function invokeAgent(
       if (parsed.event === "token") {
         const { text } = JSON.parse(parsed.data) as { text: string };
         onToken(text);
+      } else if (parsed.event === "sources") {
+        const { sources } = JSON.parse(parsed.data) as { sources: string[] };
+        onSources?.(sources);
       } else if (parsed.event === "usage_total") {
         const usage = JSON.parse(parsed.data) as { used: number; limit: number };
         onUsageUpdate?.(usage.used, usage.limit);
