@@ -19,6 +19,10 @@ TOOLS = [
     "slack_post_message",
     "slack_read_history",
     "slack_list_channels",
+    "gmail_search",
+    "gmail_read",
+    "gmail_send",
+    "gmail_reply",
 ]
 
 

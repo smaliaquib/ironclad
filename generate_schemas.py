@@ -18,6 +18,14 @@ from tools.echo import NAME as ECHO_NAME
 from tools.echo import EchoInput
 from tools.get_time import NAME as GET_TIME_NAME
 from tools.get_time import GetTimeInput
+from tools.gmail_read import NAME as GMAIL_READ_NAME
+from tools.gmail_read import GmailReadInput
+from tools.gmail_reply import NAME as GMAIL_REPLY_NAME
+from tools.gmail_reply import GmailReplyInput
+from tools.gmail_search import NAME as GMAIL_SEARCH_NAME
+from tools.gmail_search import GmailSearchInput
+from tools.gmail_send import NAME as GMAIL_SEND_NAME
+from tools.gmail_send import GmailSendInput
 from tools.slack_list_channels import NAME as SLACK_LIST_CHANNELS_NAME
 from tools.slack_list_channels import SlackListChannelsInput
 from tools.slack_post_message import NAME as SLACK_POST_MESSAGE_NAME
@@ -36,6 +44,10 @@ def main() -> None:
         SLACK_POST_MESSAGE_NAME: SlackPostMessageInput.model_json_schema(),
         SLACK_READ_HISTORY_NAME: SlackReadHistoryInput.model_json_schema(),
         SLACK_LIST_CHANNELS_NAME: SlackListChannelsInput.model_json_schema(),
+        GMAIL_SEARCH_NAME: GmailSearchInput.model_json_schema(),
+        GMAIL_READ_NAME: GmailReadInput.model_json_schema(),
+        GMAIL_SEND_NAME: GmailSendInput.model_json_schema(),
+        GMAIL_REPLY_NAME: GmailReplyInput.model_json_schema(),
     }
     OUTPUT_PATH.write_text(json.dumps(schemas, indent=2, sort_keys=True) + "\n")
 
