@@ -1,51 +1,55 @@
-# Ironclad
 
-Chat app with a streaming agent backend. Each part of the stack lives in its own branch; `master` is just this guide.
+# Ironclad — mcp-tools
 
-```
-React + TS (frontend)  --POST /invoke-->  Go router  --POST /invoke-->  Python agent (FastAPI + Claude via Bedrock)
-        <----------------------------------- SSE stream ------------------------------------------
-```
+The Lambda-backed MCP tools for [Ironclad](https://github.com/smaliaquib/ironclad) — see the `master` branch for the full project overview. These tools are called by the `mcp-gateway` service, which reads their catalog from an SSM Parameter (the "tool registry") that this repo's own CD pipeline writes on every deploy.
 
-## Branches
+Three deliberately trivial ("dummy") tools proving the gateway's Lambda dispatch works end-to-end:
 
-| Branch | What it is | Run |
+| Tool | Input | Output |
 |---|---|---|
-| [`frontend`](https://github.com/smaliaquib/ironclad/tree/frontend) | React + TypeScript (Vite) chat UI, port 5173 | `npm install && npm run dev` |
-| [`router`](https://github.com/smaliaquib/ironclad/tree/router) | Go service, `POST /invoke`, port 8080 | `go run .` |
-| [`agent`](https://github.com/smaliaquib/ironclad/tree/agent) | FastAPI service calling Claude Haiku via AWS Bedrock, port 8000 | `uv sync && uv run uvicorn main:app --reload --port 8000` |
-| [`infra`](https://github.com/smaliaquib/ironclad/tree/infra) | Terraform: AWS ECS Fargate + single ALB + CodePipeline per app | `terraform init && terraform plan -var-file=envs/dev.tfvars` |
+| `echo` | `{ "message": string }` | `{ "echoed": string }` |
+| `get_time` | `{}` | `{ "utc_time": string }` (ISO 8601 UTC) |
+| `add_numbers` | `{ "a": number, "b": number }` | `{ "result": number }` |
 
-Each branch has its own README with full setup and config details. Working across all four at once (without repeatedly `git checkout`ing back and forth) is exactly what [git worktrees](https://git-scm.com/docs/git-worktree) are for — one clone, one `.git`, but each branch checked out into its own folder simultaneously:
+Each tool defines a [Pydantic](https://docs.pydantic.dev/) `BaseModel` for its input and validates every call against it - a bad call gets back `{"error": "..."}` instead of crashing the Lambda. There is no hand-written JSON Schema anywhere in this repo or in `infra`: the schema published in the tool registry is generated directly from these models (`model_json_schema()`), so what the gateway advertises can never drift from what the Lambda actually accepts.
 
-```
-git clone --branch master https://github.com/smaliaquib/ironclad.git ironclad
-cd ironclad
-git worktree add ../frontend frontend
-git worktree add ../router   router
-git worktree add ../agent    agent
-git worktree add ../infra    infra
-```
-
-This gives you sibling folders `frontend/`, `router/`, `agent/`, `infra/` next to this `ironclad/` (master) checkout — `cd` into whichever one you're working on, no branch switching required. `git worktree list` shows all of them; `git worktree remove <path>` drops one you no longer need.
-
-## Docker
-
-Each branch has its own `Dockerfile` (see that branch's README for standalone `docker build`/`docker run` usage). To run all three together, set up the worktrees as above, create `agent/.env` from its `.env.example`, then from this directory:
+## Run tools locally
 
 ```
-docker compose up --build
+uv sync
+uv run python -c "from tools.echo import handler; print(handler({'message': 'hi'}, None))"
 ```
 
-This starts agent (`:8000`), router (`:8080`), and frontend (`:5173`), wired together via `docker-compose.yml`.
+## Regenerating schemas
 
-## AWS deployment
+Run this after editing any tool's Pydantic model, and commit the result:
 
-The `infra` branch has Terraform for running this on ECS Fargate: one public ALB path-routes to frontend (`/`) and router (`/invoke*`); agent has no ALB and is reached from router over Cloud Map service discovery. Each app is its own ECS service, ECR repo, CloudWatch log group, and CodePipeline tracking its own branch. Nothing has been applied yet — see that branch's README before running `terraform apply`.
+```
+uv run python generate_schemas.py
+```
 
-## Flow
+CI (`buildspecs/buildspec-ci.yml`) re-runs this and diffs it against the committed `schemas.generated.json`, failing the build if they don't match - this is what actually prevents a model change from silently going out without its schema being regenerated.
 
-1. User types a message in the React UI.
-2. Frontend POSTs `{ message }` to the router's `/invoke`.
-3. Router forwards the request to the agent's `/invoke` and streams the SSE response back to the browser untouched.
-4. Agent calls Claude Haiku via Bedrock with streaming enabled and emits SSE events: `token` (text delta), `done`, `error`.
+## Lint, format, test
+
+```
+uv sync --frozen
+uv run ruff check .
+uv run black --check .
+uv run pytest tests/unit/ -v
+```
+
+## Infra
+
+`infra`'s `modules/mcp-tools` creates each tool's `aws_lambda_function` (IAM role + a placeholder zip only - `lifecycle { ignore_changes = [filename, source_code_hash] }`) and the registry `aws_ssm_parameter` (also placeholder, `ignore_changes = [value]`). Neither the real code nor the real registry content ever comes from Terraform - both come from this repo's own CD pipeline, same principle as how the ECS-based services (`frontend`/`router`/`agent`/`mcp-gateway`) get their container image from their own CD, not from `terraform apply`.
+
+## CI/CD
+
+`buildspecs/buildspec-ci.yml` - lint (ruff) + format check (black) + unit tests (pytest) + schema-drift check, meant to run on PRs/feature branch pushes.
+
+`buildspecs/buildspec-cd.yml`, on merges to this branch:
+1. Vendors `pydantic` (and its compiled dependency `pydantic-core`) into each tool's deployment zip via `pip install --platform manylinux2014_x86_64 --only-binary=:all:` - the base Python 3.12 Lambda runtime doesn't include it, and this fetches the correct prebuilt wheel regardless of the CodeBuild host's own platform.
+2. `aws lambda update-function-code`s each of the 3 functions.
+3. Regenerates the schemas, looks up each function's real ARN (`aws lambda get-function`), and `aws ssm put-parameter --overwrite`s the tool registry with the fresh `{name, description, input_schema, lambda_arn}` catalog.
+
+Expects `AWS_DEFAULT_REGION`, `NAME_PREFIX`, and `REGISTRY_SSM_PARAM` as CodeBuild environment variables (wired up in the `infra` branch). Every deploy writes exactly one new SSM parameter version - `aws ssm get-parameter-history --name <REGISTRY_SSM_PARAM>` shows the full history, one entry per deploy.

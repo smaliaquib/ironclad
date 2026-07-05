@@ -1,0 +1,132 @@
+version: 0.2
+
+# CD - deploy each tool's Lambda code, then rewrite the tool registry (SSM
+# Parameter) from the freshly-regenerated Pydantic schemas + the real,
+# just-deployed function ARNs.
+# Triggered on: merges to the mcp-tools branch
+#
+# Required environment variables (injected by the CodeBuild project):
+#   AWS_DEFAULT_REGION - target region
+#   NAME_PREFIX        - e.g. ironclad-dev (Lambda function names are
+#                         ${NAME_PREFIX}-mcp-tool-<tool>, matching
+#                         infra/modules/mcp-tools)
+#   REGISTRY_SSM_PARAM - SSM parameter name for the tool registry
+#
+# Every tool's Lambda handler is configured as "handler.handler" (see
+# infra/modules/mcp-tools) - each tool's zip bundles its own tools/<name>.py
+# renamed to handler.py, plus a vendored copy of pydantic (not present in the
+# base Python 3.12 Lambda runtime). Rewriting the registry on every deploy is
+# what keeps the published schema and the deployed code from ever drifting -
+# each deploy produces exactly one new SSM parameter version.
+
+env:
+  variables:
+    AWS_DEFAULT_REGION: "us-east-1"
+
+phases:
+  install:
+    runtime-versions:
+      python: "3.12"
+    commands:
+      - echo "=== Installing uv ==="
+      - curl -LsSf https://astral.sh/uv/install.sh | sh
+      - export PATH="$HOME/.local/bin:$PATH"
+      - which zip || yum install -y zip
+
+  pre_build:
+    commands:
+      - export PATH="$HOME/.local/bin:$PATH"
+      - echo "=== Syncing dependencies ==="
+      - uv sync --frozen
+      - echo "=== Vendoring pydantic for the Lambda zips (cross-platform wheels, matches the Lambda runtime regardless of the build host) ==="
+      - |
+        pip3 install \
+          pydantic pydantic-core annotated-types typing-extensions typing-inspection \
+          --target ./vendor \
+          --platform manylinux2014_x86_64 \
+          --only-binary=:all: \
+          --python-version 3.12 \
+          --no-deps
+
+  build:
+    commands:
+      - export PATH="$HOME/.local/bin:$PATH"
+      - echo "=== Regenerating schemas from the current Pydantic models ==="
+      - uv run python generate_schemas.py
+      - echo "=== Deploying each tool's Lambda code ==="
+      - |
+        for TOOL in echo get_time add_numbers; do
+          echo "--- $TOOL ---"
+          rm -rf build_pkg && mkdir build_pkg
+          cp -r vendor/* build_pkg/
+          cp "tools/${TOOL}.py" build_pkg/handler.py
+          ( cd build_pkg && zip -rq "../${TOOL}.zip" . -x '*.dist-info/*' )
+          FUNCTION_NAME="${NAME_PREFIX}-mcp-tool-${TOOL}"
+          aws lambda update-function-code \
+            --function-name "$FUNCTION_NAME" \
+            --zip-file "fileb://${TOOL}.zip" \
+            --region "$AWS_DEFAULT_REGION" > /dev/null
+          echo "Deployed $FUNCTION_NAME"
+        done
+      - echo "=== Waiting for all functions to finish updating ==="
+      - |
+        for TOOL in echo get_time add_numbers; do
+          aws lambda wait function-updated \
+            --function-name "${NAME_PREFIX}-mcp-tool-${TOOL}" \
+            --region "$AWS_DEFAULT_REGION"
+        done
+
+  post_build:
+    commands:
+      - export PATH="$HOME/.local/bin:$PATH"
+      - echo "=== Rebuilding the tool registry from real ARNs + generated schemas ==="
+      - |
+        uv run python - <<'PY'
+        import json
+        import os
+        import subprocess
+
+        TOOLS = ["echo", "get_time", "add_numbers"]
+
+        descriptions = {}
+        for tool in TOOLS:
+            mod = __import__(f"tools.{tool}", fromlist=["NAME", "DESCRIPTION"])
+            descriptions[mod.NAME] = mod.DESCRIPTION
+
+        schemas = json.load(open("schemas.generated.json"))
+        name_prefix = os.environ["NAME_PREFIX"]
+        region = os.environ["AWS_DEFAULT_REGION"]
+
+        registry = []
+        for tool in TOOLS:
+            function_name = f"{name_prefix}-mcp-tool-{tool}"
+            arn = subprocess.check_output(
+                [
+                    "aws", "lambda", "get-function",
+                    "--function-name", function_name,
+                    "--region", region,
+                    "--query", "Configuration.FunctionArn",
+                    "--output", "text",
+                ]
+            ).decode().strip()
+            registry.append(
+                {
+                    "name": tool,
+                    "description": descriptions[tool],
+                    "input_schema": schemas[tool],
+                    "lambda_arn": arn,
+                }
+            )
+
+        with open("registry.json", "w") as f:
+            json.dump(registry, f)
+        PY
+      - echo "=== Publishing the new registry version to SSM ==="
+      - |
+        aws ssm put-parameter \
+          --name "$REGISTRY_SSM_PARAM" \
+          --type String \
+          --overwrite \
+          --value "$(cat registry.json)" \
+          --region "$AWS_DEFAULT_REGION"
+      - echo "=== Registry updated: $REGISTRY_SSM_PARAM ==="

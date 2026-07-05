@@ -1,0 +1,38 @@
+{
+  "add_numbers": {
+    "properties": {
+      "a": {
+        "title": "A",
+        "type": "number"
+      },
+      "b": {
+        "title": "B",
+        "type": "number"
+      }
+    },
+    "required": [
+      "a",
+      "b"
+    ],
+    "title": "AddNumbersInput",
+    "type": "object"
+  },
+  "echo": {
+    "properties": {
+      "message": {
+        "title": "Message",
+        "type": "string"
+      }
+    },
+    "required": [
+      "message"
+    ],
+    "title": "EchoInput",
+    "type": "object"
+  },
+  "get_time": {
+    "properties": {},
+    "title": "GetTimeInput",
+    "type": "object"
+  }
+}

@@ -1,7 +1,20 @@
-node_modules/
-dist/
-.venv/
+# Python-generated files
 __pycache__/
-*.pyc
-.env
-.env.local
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Local build artifacts from buildspec-cd.yml (mirrored for local testing)
+vendor/
+build_pkg/
+*.zip
+registry.json
+
+.pytest_cache
+.ruff_cache
+test-results.xml
