@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 
 import boto3
@@ -11,8 +12,33 @@ from pydantic import BaseModel
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 MODEL = os.getenv("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
-KNOWLEDGE_BASE_ID = os.getenv("KNOWLEDGE_BASE_ID", "")
+KNOWLEDGE_BASE_SSM_PARAM = os.getenv("KNOWLEDGE_BASE_SSM_PARAM", "")
+
+
+def _resolve_knowledge_base_id() -> str:
+    """Looks up the knowledge base id from SSM by parameter name, rather than
+    baking the id directly into the task definition - if the knowledge base
+    is ever recreated, only the parameter's value changes, not this service's
+    env vars. Returns "" (same as "no knowledge base configured") on any
+    failure, so a broken/missing parameter degrades to plain chat instead of
+    crashing the whole service at startup.
+    """
+    if not KNOWLEDGE_BASE_SSM_PARAM:
+        return ""
+    try:
+        ssm = boto3.client("ssm", region_name=os.getenv("AWS_REGION", "us-east-1"))
+        return ssm.get_parameter(Name=KNOWLEDGE_BASE_SSM_PARAM)["Parameter"]["Value"]
+    except Exception:
+        logger.exception(
+            "Failed to resolve knowledge base id from SSM parameter %s", KNOWLEDGE_BASE_SSM_PARAM
+        )
+        return ""
+
+
+KNOWLEDGE_BASE_ID = _resolve_knowledge_base_id()
 
 app = FastAPI(title="Ironclad Agent")
 client = AsyncAnthropicBedrock(
