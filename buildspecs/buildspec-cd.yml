@@ -89,4 +89,4 @@ phases:
           --overwrite \
           --value "$(cat registry.json)" \
           --region "$AWS_DEFAULT_REGION"
-      - echo "=== Registry updated: $REGISTRY_SSM_PARAM ==="
+      - echo "=== Registry updated ($REGISTRY_SSM_PARAM) ==="

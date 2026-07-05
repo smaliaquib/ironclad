@@ -36,7 +36,7 @@ phases:
       - |
         if ! diff -q schemas.generated.json /tmp/schemas.committed.json > /dev/null; then
           echo "schemas.generated.json is stale - a tool's Pydantic model changed without regenerating it."
-          echo "Run: uv run python generate_schemas.py, then commit the result."
+          echo "Run 'uv run python generate_schemas.py', then commit the result."
           diff schemas.generated.json /tmp/schemas.committed.json || true
           exit 1
         fi
