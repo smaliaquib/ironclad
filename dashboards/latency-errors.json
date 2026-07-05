@@ -55,7 +55,10 @@
             "type": "cloudwatch",
             "uid": "cloudwatch"
           },
-          "id": "a"
+          "id": "a",
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         },
         {
           "refId": "B",
@@ -69,7 +72,10 @@
             "type": "cloudwatch",
             "uid": "cloudwatch"
           },
-          "id": "b"
+          "id": "b",
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         },
         {
           "refId": "C",
@@ -83,7 +89,10 @@
             "type": "cloudwatch",
             "uid": "cloudwatch"
           },
-          "id": "c"
+          "id": "c",
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         }
       ],
       "options": {
@@ -129,7 +138,10 @@
             "type": "cloudwatch",
             "uid": "cloudwatch"
           },
-          "id": "a"
+          "id": "a",
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         },
         {
           "refId": "B",
@@ -147,7 +159,10 @@
             "type": "cloudwatch",
             "uid": "cloudwatch"
           },
-          "id": "b"
+          "id": "b",
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         },
         {
           "refId": "C",
@@ -165,7 +180,10 @@
             "type": "cloudwatch",
             "uid": "cloudwatch"
           },
-          "id": "c"
+          "id": "c",
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         }
       ],
       "fieldConfig": {
@@ -222,7 +240,10 @@
             "type": "cloudwatch",
             "uid": "cloudwatch"
           },
-          "id": "a"
+          "id": "a",
+          "queryMode": "Metrics",
+          "metricQueryType": 0,
+          "metricEditorMode": 0
         }
       ],
       "fieldConfig": {
