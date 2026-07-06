@@ -1,6 +1,6 @@
-# Ironclad — router
+# Ironclad — ai-gateway
 
-The router service for [Ironclad](https://github.com/smaliaquib/ironclad) — see the `master` branch for the full project overview and how this fits with the `agent` and `frontend` branches.
+The AI gateway service for [Ironclad](https://github.com/smaliaquib/ironclad) — see the `master` branch for the full project overview and how this fits with the `agent` and `frontend` branches. (Formerly named `router`.)
 
 Go service that exposes `POST /invoke`, forwards the request to the agent service, and streams the SSE response straight through to the caller.
 
@@ -13,10 +13,10 @@ go run .
 ## Config (env vars)
 
 - `AGENT_URL` — base URL of the agent service (default `http://localhost:8000`)
-- `ROUTER_ADDR` — listen address (default `:8080`)
+- `AI_GATEWAY_ADDR` — listen address (default `:8080`)
 - `REQUIRE_AUTH` — when `true`, `/invoke` requires a valid Cognito `id_token` cookie (re-verified here against Cognito's JWKS, independent of whatever CloudFront's Lambda@Edge already checked) and enforces the per-user daily token limit. Defaults off, so local dev needs no Cognito setup at all.
 - `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`, `AWS_REGION` — required when `REQUIRE_AUTH=true`, used to verify the JWT (issuer/audience) and fetch its JWKS.
-- `USAGE_TABLE_NAME`, `DAILY_TOKEN_LIMIT` — required when `REQUIRE_AUTH=true`: the DynamoDB table tracking each user's daily Bedrock token usage, and the cap (tokens/user/UTC day) before `/invoke` starts returning `429`. The router watches the agent's SSE stream for a `usage` event to record actual usage after each request.
+- `USAGE_TABLE_NAME`, `DAILY_TOKEN_LIMIT` — required when `REQUIRE_AUTH=true`: the DynamoDB table tracking each user's daily Bedrock token usage, and the cap (tokens/user/UTC day) before `/invoke` starts returning `429`. ai-gateway watches the agent's SSE stream for a `usage` event to record actual usage after each request.
 
 ## Observability
 
@@ -27,8 +27,8 @@ Every completed `/invoke` request (success, error, or rate-limited) emits one st
 ### Docker
 
 ```
-docker build -t ironclad-router .
-docker run --rm -p 8080:8080 -e AGENT_URL=http://host.docker.internal:8000 ironclad-router
+docker build -t ironclad-ai-gateway .
+docker run --rm -p 8080:8080 -e AGENT_URL=http://host.docker.internal:8000 ironclad-ai-gateway
 ```
 
 ## API

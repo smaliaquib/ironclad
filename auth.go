@@ -33,7 +33,7 @@ func initAuth(userPoolID, clientID, region string) error {
 
 // verifyIDToken re-verifies the id_token cookie ourselves rather than trusting
 // that CloudFront's Lambda@Edge already checked it - defense in depth, and it
-// means a request that reaches this router directly (bypassing CloudFront)
+// means a request that reaches ai-gateway directly (bypassing CloudFront)
 // still can't get through without a valid session.
 func verifyIDToken(r *http.Request) (userID string, err error) {
 	cookie, err := r.Cookie("id_token")

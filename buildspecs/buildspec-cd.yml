@@ -1,10 +1,10 @@
 version: 0.2
 
 # CD - build, tag, push to ECR, force ECS redeployment
-# Triggered on: merges to the router branch
+# Triggered on: merges to the ai-gateway branch
 #
 # Required environment variables (injected by the CodeBuild project):
-#   ECR_REPO_URL       - full ECR repo URI (e.g. 123456789.dkr.ecr.us-east-1.amazonaws.com/ironclad-dev-router)
+#   ECR_REPO_URL       - full ECR repo URI (e.g. 123456789.dkr.ecr.us-east-1.amazonaws.com/ironclad-dev-ai-gateway)
 #   AWS_DEFAULT_REGION - target region
 #   AWS_ACCOUNT_ID     - AWS account ID
 #   ECS_CLUSTER        - ECS cluster name

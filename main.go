@@ -30,7 +30,7 @@ func main() {
 		agentBaseURL = "http://localhost:8000"
 	}
 
-	addr := os.Getenv("ROUTER_ADDR")
+	addr := os.Getenv("AI_GATEWAY_ADDR")
 	if addr == "" {
 		addr = ":8080"
 	}
@@ -63,7 +63,7 @@ func main() {
 	mux.HandleFunc("/invoke/usage", withCORS(handleUsage))
 	mux.HandleFunc("/health", withCORS(handleHealth))
 
-	log.Printf("router listening on %s, forwarding to agent at %s", addr, agentBaseURL)
+	log.Printf("ai-gateway listening on %s, forwarding to agent at %s", addr, agentBaseURL)
 	if err := http.ListenAndServe(addr, mux); err != nil {
 		log.Fatal(err)
 	}
@@ -251,7 +251,7 @@ type usageEvent struct {
 
 // trackUsageEvent watches the SSE stream being proxied through for an
 // "event: usage" block and parses its "data:" line - the agent emits this
-// right before "done" so the router can record actual Bedrock token usage
+// right before "done" so ai-gateway can record actual Bedrock token usage
 // without the agent needing to know about users or limits. sseEvent/usage
 // are threaded through by the caller since this is called once per line.
 func trackUsageEvent(line []byte, sseEvent string, usage usageEvent) (string, usageEvent) {

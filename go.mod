@@ -1,4 +1,4 @@
-module ironclad/router
+module ironclad/ai-gateway
 
 go 1.25.6
 
