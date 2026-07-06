@@ -7,6 +7,8 @@ React + TS (frontend)  --POST /invoke-->  Go ai-gateway  --POST /invoke-->  Pyth
         <----------------------------------- SSE stream ------------------------------------------
 ```
 
+[![Watch the demo](https://drive.google.com/thumbnail?id=1ixydfVVSazi4uajdS6pnbHVO0Dk-2V6b&sz=w1000)](https://drive.google.com/file/d/1ixydfVVSazi4uajdS6pnbHVO0Dk-2V6b/view)
+
 ## Branches
 
 | Branch | What it is | Run |
