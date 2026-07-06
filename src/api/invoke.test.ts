@@ -38,7 +38,7 @@ describe("invokeAgent", () => {
     const onError = vi.fn();
     const onUnauthorized = vi.fn();
 
-    await invokeAgent("hi", { onToken, onDone, onError, onUnauthorized });
+    await invokeAgent("hi", [], { onToken, onDone, onError, onUnauthorized });
 
     expect(onToken).toHaveBeenNthCalledWith(1, "Hel");
     expect(onToken).toHaveBeenNthCalledWith(2, "lo");
@@ -54,7 +54,7 @@ describe("invokeAgent", () => {
     const onError = vi.fn();
     const onUnauthorized = vi.fn();
 
-    await invokeAgent("hi", { onToken, onDone, onError, onUnauthorized });
+    await invokeAgent("hi", [], { onToken, onDone, onError, onUnauthorized });
 
     expect(onError).toHaveBeenCalledWith("request failed: 502");
     expect(onToken).not.toHaveBeenCalled();
@@ -72,7 +72,7 @@ describe("invokeAgent", () => {
     const onError = vi.fn();
     const onUnauthorized = vi.fn();
 
-    await invokeAgent("hi", { onToken, onDone, onError, onUnauthorized });
+    await invokeAgent("hi", [], { onToken, onDone, onError, onUnauthorized });
 
     expect(onError).toHaveBeenCalledWith("boom");
     expect(onDone).not.toHaveBeenCalled();
@@ -86,7 +86,7 @@ describe("invokeAgent", () => {
     const onError = vi.fn();
     const onUnauthorized = vi.fn();
 
-    await invokeAgent("hi", { onToken, onDone, onError, onUnauthorized });
+    await invokeAgent("hi", [], { onToken, onDone, onError, onUnauthorized });
 
     expect(onUnauthorized).toHaveBeenCalledOnce();
     expect(onError).not.toHaveBeenCalled();
@@ -112,7 +112,7 @@ describe("invokeAgent", () => {
     const onUnauthorized = vi.fn();
     const onUsageUpdate = vi.fn();
 
-    await invokeAgent("hi", { onToken, onDone, onError, onUnauthorized, onUsageUpdate });
+    await invokeAgent("hi", [], { onToken, onDone, onError, onUnauthorized, onUsageUpdate });
 
     expect(onDone).toHaveBeenCalledOnce();
     expect(onUsageUpdate).toHaveBeenCalledWith(1234, 10000);
@@ -138,10 +138,29 @@ describe("invokeAgent", () => {
     const onUnauthorized = vi.fn();
     const onSources = vi.fn();
 
-    await invokeAgent("hi", { onToken, onDone, onError, onUnauthorized, onSources });
+    await invokeAgent("hi", [], { onToken, onDone, onError, onUnauthorized, onSources });
 
     expect(onSources).toHaveBeenCalledWith(["a.pdf", "b.txt"]);
     expect(onToken).toHaveBeenCalledWith("hi");
+  });
+
+  it("sends history in the request body", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(sseResponse(["event: done\ndata: {}\n\n"]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const onToken = vi.fn();
+    const onDone = vi.fn();
+    const onError = vi.fn();
+    const onUnauthorized = vi.fn();
+    const history = [
+      { role: "user" as const, content: "earlier question" },
+      { role: "assistant" as const, content: "earlier answer" },
+    ];
+
+    await invokeAgent("hi", history, { onToken, onDone, onError, onUnauthorized });
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse(init.body as string)).toEqual({ message: "hi", history });
   });
 
   it("calls onError with a friendly message on a 429 response", async () => {
@@ -152,7 +171,7 @@ describe("invokeAgent", () => {
     const onError = vi.fn();
     const onUnauthorized = vi.fn();
 
-    await invokeAgent("hi", { onToken, onDone, onError, onUnauthorized });
+    await invokeAgent("hi", [], { onToken, onDone, onError, onUnauthorized });
 
     expect(onError).toHaveBeenCalledWith(
       "You've reached today's usage limit - try again tomorrow.",

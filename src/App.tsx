@@ -53,6 +53,13 @@ function App({ onSignOut, onUnauthorized }: AppProps) {
     const trimmed = text.trim();
     if (!trimmed || isStreaming) return;
 
+    // Captured from render state before the update below - i.e. exactly the
+    // conversation so far, not including this turn - giving the agent memory
+    // without this service needing to track sessions itself.
+    const history = messages
+      .filter((m) => !m.error)
+      .map((m) => ({ role: m.role, content: m.content }));
+
     setMessages((prev) => [
       ...prev,
       { role: "user", content: trimmed },
@@ -66,6 +73,7 @@ function App({ onSignOut, onUnauthorized }: AppProps) {
 
     await invokeAgent(
       trimmed,
+      history,
       {
         onToken: (token) => {
           setMessages((prev) => {

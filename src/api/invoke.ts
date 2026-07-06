@@ -5,6 +5,11 @@
 // different origins - see .env.example.
 const AI_GATEWAY_URL = import.meta.env.VITE_AI_GATEWAY_URL ?? "";
 
+export interface HistoryMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export interface InvokeCallbacks {
   onToken: (text: string) => void;
   onDone: () => void;
@@ -40,6 +45,7 @@ function parseSSEBlock(block: string): SSEEvent | null {
 
 export async function invokeAgent(
   message: string,
+  history: HistoryMessage[],
   callbacks: InvokeCallbacks,
   signal?: AbortSignal,
 ): Promise<void> {
@@ -50,7 +56,7 @@ export async function invokeAgent(
     response = await fetch(`${AI_GATEWAY_URL}/invoke`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, history }),
       signal,
     });
   } catch (err) {
