@@ -1,9 +1,9 @@
 // Empty (the default) means "same origin, relative path" - correct whenever
 // the frontend is served from behind the same gateway (ALB or CloudFront)
-// that path-routes /invoke* to the router. Only needed as an absolute URL
-// for local dev / docker-compose, where frontend and router run on
+// that path-routes /invoke* to ai-gateway. Only needed as an absolute URL
+// for local dev / docker-compose, where frontend and ai-gateway run on
 // different origins - see .env.example.
-const ROUTER_URL = import.meta.env.VITE_ROUTER_URL ?? "";
+const AI_GATEWAY_URL = import.meta.env.VITE_AI_GATEWAY_URL ?? "";
 
 export interface InvokeCallbacks {
   onToken: (text: string) => void;
@@ -11,7 +11,7 @@ export interface InvokeCallbacks {
   onError: (message: string) => void;
   /** Session expired or was never established - caller should show the login page. */
   onUnauthorized: () => void;
-  /** The router appends this after "done" with the caller's updated daily total. */
+  /** ai-gateway appends this after "done" with the caller's updated daily total. */
   onUsageUpdate?: (used: number, limit: number) => void;
   /** The agent sends this before any tokens, if the knowledge base returned matches. */
   onSources?: (sources: string[]) => void;
@@ -47,7 +47,7 @@ export async function invokeAgent(
 
   let response: Response;
   try {
-    response = await fetch(`${ROUTER_URL}/invoke`, {
+    response = await fetch(`${AI_GATEWAY_URL}/invoke`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message }),
@@ -100,7 +100,7 @@ export async function invokeAgent(
         const usage = JSON.parse(parsed.data) as { used: number; limit: number };
         onUsageUpdate?.(usage.used, usage.limit);
       } else if (parsed.event === "done") {
-        // Keep reading rather than returning here - the router appends a
+        // Keep reading rather than returning here - ai-gateway appends a
         // usage_total event after "done" in the same stream, so bailing out
         // now would mean never seeing it.
         sawDone = true;

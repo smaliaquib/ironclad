@@ -39,8 +39,8 @@ export interface UsageStatus {
   limit: number;
 }
 
-// Served by the router (not the edge-auth Lambda) under /invoke/usage rather
-// than its own /usage path, so it reaches the router without needing a new
+// Served by ai-gateway (not the edge-auth Lambda) under /invoke/usage rather
+// than its own /usage path, so it reaches ai-gateway without needing a new
 // ALB/CloudFront route - /invoke* already routes there with GET allowed.
 export async function fetchUsage(): Promise<UsageStatus | null> {
   try {
