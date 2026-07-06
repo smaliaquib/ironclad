@@ -18,7 +18,7 @@ React + TS (frontend)  --POST /invoke-->  Go ai-gateway  --POST /invoke-->  Pyth
 | [`agent`](https://github.com/smaliaquib/ironclad/tree/agent) | FastAPI service calling Claude Haiku via AWS Bedrock, port 8000 | `uv sync && uv run uvicorn main:app --reload --port 8000` |
 | [`infra`](https://github.com/smaliaquib/ironclad/tree/infra) | Terraform: AWS ECS Fargate + single ALB + CodePipeline per app | `terraform init && terraform plan -var-file=envs/dev.tfvars` |
 
-Each branch has its own README with full setup and config details. Working across all four at once (without repeatedly `git checkout`ing back and forth) is exactly what [git worktrees](https://git-scm.com/docs/git-worktree) are for — one clone, one `.git`, but each branch checked out into its own folder simultaneously:
+*Click the thumbnail (or [here](https://drive.google.com/file/d/1ixydfVVSazi4uajdS6pnbHVO0Dk-2V6b/view)) to watch on Google Drive.*
 
 ```
 git clone --branch master https://github.com/smaliaquib/ironclad.git ironclad
