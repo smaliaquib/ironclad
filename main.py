@@ -31,6 +31,23 @@ logger = logging.getLogger(__name__)
 MODEL = os.getenv("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
 KNOWLEDGE_BASE_SSM_PARAM = os.getenv("KNOWLEDGE_BASE_SSM_PARAM", "")
 
+SYSTEM_PROMPT = (
+    "You are Ironclad, a helpful, general-purpose AI assistant. Be direct, "
+    "clear, and concise - skip unnecessary preamble and get straight to the "
+    "point. You may have access to tools (e.g. web search, Slack, Gmail, "
+    "date/time, simple calculations) depending on configuration - use them "
+    "whenever they would give a better or more current answer than your own "
+    "knowledge, and say so when you do. If you're not sure about something, "
+    "say so rather than guessing. When retrieved context is provided for a "
+    "question, prioritize it, but fall back to your own knowledge if it "
+    "doesn't actually answer the question."
+)
+
+# Bounds token growth (and cost) as a conversation gets long - the oldest
+# turns just age out of what's sent to the model rather than the request
+# ever failing or the caller needing to manage this themselves.
+MAX_HISTORY_MESSAGES = 20
+
 
 def _resolve_knowledge_base_id() -> str:
     """Looks up the knowledge base id from SSM by parameter name, rather than
@@ -67,12 +84,37 @@ bedrock_agent_client = (
 )
 
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
 class InvokeRequest(BaseModel):
     message: str
+    # Prior turns of this conversation, oldest first, NOT including `message`
+    # itself - the frontend already keeps the full conversation in its own
+    # state to render it, so "memory" is just resending that history rather
+    # than the agent (or any new datastore) tracking sessions server-side.
+    history: list[ChatMessage] = []
 
 
 def sse_event(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+def build_messages(history: list[ChatMessage], prompt: str) -> list[dict]:
+    """Builds the full message list for the model: system prompt, the
+    conversation history capped to MAX_HISTORY_MESSAGES (oldest trimmed
+    first), then the current turn (`prompt`, already RAG-augmented if a
+    knowledge base matched). Pure/deterministic - no LLM call - so it's
+    unit-testable without hitting Bedrock, unlike the rest of run_agent.
+    """
+    trimmed_history = history[-MAX_HISTORY_MESSAGES:]
+    return (
+        [{"role": "system", "content": SYSTEM_PROMPT}]
+        + [{"role": h.role, "content": h.content} for h in trimmed_history]
+        + [{"role": "user", "content": prompt}]
+    )
 
 
 async def retrieve_context(query: str) -> tuple[list[str], list[str]]:
@@ -107,7 +149,7 @@ async def retrieve_context(query: str) -> tuple[list[str], list[str]]:
     return chunks, sources
 
 
-async def run_agent(message: str):
+async def run_agent(message: str, history: list[ChatMessage]):
     try:
         chunks, sources = await retrieve_context(message)
         if sources:
@@ -129,7 +171,7 @@ async def run_agent(message: str):
         total_output_tokens = 0
         tool_calls = 0
         async for event in agent.astream_events(
-            {"messages": [{"role": "user", "content": prompt}]}, version="v2"
+            {"messages": build_messages(history, prompt)}, version="v2"
         ):
             if event["event"] == "on_chat_model_stream":
                 content = event["data"]["chunk"].content
@@ -172,7 +214,7 @@ async def run_agent(message: str):
 
 @app.post("/invoke")
 async def invoke(req: InvokeRequest):
-    return StreamingResponse(run_agent(req.message), media_type="text/event-stream")
+    return StreamingResponse(run_agent(req.message, req.history), media_type="text/event-stream")
 
 
 @app.get("/health")

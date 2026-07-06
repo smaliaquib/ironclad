@@ -21,6 +21,8 @@ Optional `MCP_GATEWAY_URL` env var enables tool use: if set, `mcp_tools.py` fetc
 
 Uses `langgraph.prebuilt.create_react_agent` rather than the newer `langchain.agents.create_agent` - deliberately, because the newer API doesn't yet propagate token-level streaming events through `astream_events` (verified directly; the deprecated one does), and real token streaming is a hard requirement here. Revisit once that catches up.
 
+Runs with a fixed system prompt (`main.py`'s `SYSTEM_PROMPT`) establishing it as a general-purpose assistant. Conversation memory is stateless on this service by design: the caller (ai-gateway/frontend) resends the full prior conversation as `history` on every `/invoke` call rather than this service tracking sessions itself - there's no thread-id, no checkpointer, no new datastore. History is capped to the most recent `MAX_HISTORY_MESSAGES` turns (oldest dropped first) so token usage/cost don't grow unbounded as a conversation gets long.
+
 ### Docker
 
 ```
@@ -32,7 +34,7 @@ Or pass AWS credentials directly: `-e AWS_ACCESS_KEY_ID=... -e AWS_SECRET_ACCESS
 
 ## API
 
-`POST /invoke` — body `{ "message": string }`, responds with `text/event-stream`:
+`POST /invoke` — body `{ "message": string, "history"?: { role: "user" | "assistant", content: string }[] }` (`history` is the prior turns of this conversation, oldest first, not including `message` itself), responds with `text/event-stream`:
 
 - `event: sources` — `{ "sources": string[] }`, source document filenames - only sent if a knowledge base is configured and retrieval returned matches, always before any `token` events
 - `event: token` — `{ "text": string }` delta
