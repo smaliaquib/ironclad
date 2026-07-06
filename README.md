@@ -15,7 +15,8 @@ React + TS (frontend)  --POST /invoke-->  Go ai-gateway  --POST /invoke-->  Pyth
 | [`frontend`](https://github.com/smaliaquib/ironclad/tree/frontend) | React + TypeScript (Vite) chat UI, port 5173 | `npm install && npm run dev` |
 | [`ai-gateway`](https://github.com/smaliaquib/ironclad/tree/ai-gateway) | Go service, `POST /invoke`, port 8080 (formerly `router`) | `go run .` |
 | [`agent`](https://github.com/smaliaquib/ironclad/tree/agent) | FastAPI service calling Claude Haiku via AWS Bedrock, port 8000 | `uv sync && uv run uvicorn main:app --reload --port 8000` |
-| [`infra`](https://github.com/smaliaquib/ironclad/tree/infra) | Terraform: AWS ECS Fargate + single ALB + CodePipeline per app | `terraform init && terraform plan -var-file=envs/dev.tfvars` |
+
+Terraform for the AWS deployment lives in a separate **private** repo (`ironclad-infra`), not a branch here — see [AWS deployment](#aws-deployment) below. Everyone else's app code is public; only the infra (account IDs, resource layout) is kept private.
 
 *Click the thumbnail (or [here](https://drive.google.com/file/d/1ixydfVVSazi4uajdS6pnbHVO0Dk-2V6b/view)) to watch on Google Drive.*
 
@@ -25,10 +26,11 @@ cd ironclad
 git worktree add ../frontend    frontend
 git worktree add ../ai-gateway  ai-gateway
 git worktree add ../agent       agent
-git worktree add ../infra       infra
 ```
 
-This gives you sibling folders `frontend/`, `ai-gateway/`, `agent/`, `infra/` next to this `ironclad/` (master) checkout — `cd` into whichever one you're working on, no branch switching required. `git worktree list` shows all of them; `git worktree remove <path>` drops one you no longer need.
+This gives you sibling folders `frontend/`, `ai-gateway/`, `agent/` next to this `ironclad/` (master) checkout — `cd` into whichever one you're working on, no branch switching required. `git worktree list` shows all of them; `git worktree remove <path>` drops one you no longer need.
+
+The infra repo isn't part of this worktree set (it's a separate GitHub repo, not a branch of this one) — clone it on its own if you have access: `git clone https://github.com/smaliaquib/ironclad-infra.git`.
 
 ## Docker
 
@@ -42,7 +44,7 @@ This starts agent (`:8000`), ai-gateway (`:8080`), and frontend (`:5173`), wired
 
 ## AWS deployment
 
-The `infra` branch has Terraform for running this on ECS Fargate: one public ALB path-routes to frontend (`/`) and ai-gateway (`/invoke*`); agent has no ALB and is reached from ai-gateway over Cloud Map service discovery. Each app is its own ECS service, ECR repo, CloudWatch log group, and CodePipeline tracking its own branch. Nothing has been applied yet — see that branch's README before running `terraform apply`.
+Terraform for running this on ECS Fargate lives in the private [`ironclad-infra`](https://github.com/smaliaquib/ironclad-infra) repo (access on request) rather than a branch of this repo: one public ALB path-routes to frontend (`/`) and ai-gateway (`/invoke*`); agent has no ALB and is reached from ai-gateway over Cloud Map service discovery. Each app is its own ECS service, ECR repo, CloudWatch log group, and CodePipeline tracking its own branch. See that repo's README before running `terraform apply`.
 
 ## Flow
 
