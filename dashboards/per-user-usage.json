@@ -33,8 +33,8 @@
           "region": "default",
           "logGroups": [
             {
-              "name": "/ecs/ironclad-dev-router",
-              "arn": "arn:aws:logs:us-east-1:628593563433:log-group:/ecs/ironclad-dev-router:*"
+              "name": "/ecs/ironclad-dev-ai-gateway",
+              "arn": "arn:aws:logs:us-east-1:628593563433:log-group:/ecs/ironclad-dev-ai-gateway:*"
             }
           ],
           "statsGroups": [
