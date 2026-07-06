@@ -18,8 +18,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
+type chatMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
 type invokeRequest struct {
-	Message string `json:"message"`
+	Message string        `json:"message"`
+	History []chatMessage `json:"history,omitempty"`
 }
 
 var agentBaseURL string

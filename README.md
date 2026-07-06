@@ -33,7 +33,7 @@ docker run --rm -p 8080:8080 -e AGENT_URL=http://host.docker.internal:8000 ironc
 
 ## API
 
-`POST /invoke` — body `{ "message": string }`, proxies to the agent and streams back `text/event-stream` unchanged. Returns `401` if `REQUIRE_AUTH` is on and the `id_token` cookie is missing/invalid, or `429` if the caller is already at today's token limit.
+`POST /invoke` — body `{ "message": string, "history"?: { role: string, content: string }[] }`, proxies to the agent (passing `history` through unchanged - the agent uses it to give the model conversation memory) and streams back `text/event-stream` unchanged. Returns `401` if `REQUIRE_AUTH` is on and the `id_token` cookie is missing/invalid, or `429` if the caller is already at today's token limit.
 
 `GET /health` — liveness check.
 
