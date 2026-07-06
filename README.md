@@ -46,4 +46,4 @@ npm run test           # vitest run
 
 `buildspecs/buildspec-ci.yml` — eslint + prettier check + typecheck + vitest, meant to run on PRs/feature branch pushes.
 
-`buildspecs/buildspec-cd.yml` — builds the Docker image (no `VITE_AI_GATEWAY_URL` build arg, so it defaults to empty/relative), pushes `:latest` and `:<commit-sha>` to ECR, then forces an ECS redeployment (`aws ecs update-service --force-new-deployment`) on merges to this branch. Expects `ECR_REPO_URL`, `AWS_DEFAULT_REGION`, `AWS_ACCOUNT_ID`, `ECS_CLUSTER`, `ECS_SERVICE` as CodeBuild environment variables (wired up in the `infra` branch).
+`buildspecs/buildspec-cd.yml` — builds the Docker image (no `VITE_AI_GATEWAY_URL` build arg, so it defaults to empty/relative), pushes `:latest` and `:<commit-sha>` to ECR, then forces an ECS redeployment (`aws ecs update-service --force-new-deployment`) on merges to this branch. Expects `ECR_REPO_URL`, `AWS_DEFAULT_REGION`, `AWS_ACCOUNT_ID`, `ECS_CLUSTER`, `ECS_SERVICE` as CodeBuild environment variables (wired up in the private `ironclad-infra` repo).
