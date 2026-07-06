@@ -1,7 +1,7 @@
 
 # Ironclad — agent
 
-The agent service for [Ironclad](https://github.com/smaliaquib/ironclad) — see the `master` branch for the full project overview and how this fits with the `router` and `frontend` branches.
+The agent service for [Ironclad](https://github.com/smaliaquib/ironclad) — see the `master` branch for the full project overview and how this fits with the `ai-gateway` and `frontend` branches.
 
 FastAPI service running a [LangGraph](https://github.com/langchain-ai/langgraph) tool-calling agent (Claude Haiku via AWS Bedrock, `langchain-aws`'s `ChatBedrockConverse`) and streaming the response back as SSE. Dependency management is via [uv](https://github.com/astral-sh/uv).
 
@@ -36,7 +36,7 @@ Or pass AWS credentials directly: `-e AWS_ACCESS_KEY_ID=... -e AWS_SECRET_ACCESS
 
 - `event: sources` — `{ "sources": string[] }`, source document filenames - only sent if a knowledge base is configured and retrieval returned matches, always before any `token` events
 - `event: token` — `{ "text": string }` delta
-- `event: usage` — `{ "input_tokens": number, "output_tokens": number, "model_id": string, "tool_calls": number }`, real Bedrock token counts summed across every model call the tool-use loop made this turn (a tool-calling exchange makes more than one) - the router (not this service) uses this to enforce per-user daily limits and to emit its own per-request usage/cost/latency metrics (see the `router` branch's README)
+- `event: usage` — `{ "input_tokens": number, "output_tokens": number, "model_id": string, "tool_calls": number }`, real Bedrock token counts summed across every model call the tool-use loop made this turn (a tool-calling exchange makes more than one) - ai-gateway (not this service) uses this to enforce per-user daily limits and to emit its own per-request usage/cost/latency metrics (see the `ai-gateway` branch's README)
 - `event: done` — stream finished
 - `event: error` — `{ "message": string }`
 

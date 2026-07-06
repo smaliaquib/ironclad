@@ -16,7 +16,7 @@ from pydantic import BaseModel
 # propagate on_chat_model_stream events through astream_events (verified: a
 # real streaming run produced zero chunks), while this deprecated one does -
 # confirmed live against Bedrock. Real token streaming is a hard requirement
-# here (the router/frontend depend on the "token" SSE event), so this stays
+# here (ai-gateway/frontend depend on the "token" SSE event), so this stays
 # until create_agent's streaming catches up.
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
@@ -150,7 +150,7 @@ async def run_agent(message: str):
             elif event["event"] == "on_tool_end":
                 tool_calls += 1
 
-        # The router watches for this event to enforce per-user daily token
+        # ai-gateway watches for this event to enforce per-user daily token
         # limits (and, since this session, to emit its own richer usage
         # metrics/logs - model_id + tool_calls ride along for that). Doesn't
         # change anything for a client that ignores the extra fields. Token
