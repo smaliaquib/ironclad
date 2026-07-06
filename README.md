@@ -21,7 +21,7 @@ The `CostUsd` metric comes from `ai-gateway/pricing.go`'s hardcoded model-pricin
 
 ## Admin access
 
-`GF_SECURITY_ADMIN_PASSWORD` is fetched from SSM (SecureString) by `entrypoint.sh` at container startup (`aws ssm get-parameter --with-decryption`), never baked into the image or committed anywhere. `infra`'s `modules/grafana` creates the SSM parameter shell only (`lifecycle { ignore_changes = [value] }`, same pattern as the Slack/Gmail credentials) — set the real password once after `terraform apply`:
+`GF_SECURITY_ADMIN_PASSWORD` is fetched from SSM (SecureString) by `entrypoint.sh` at container startup (`aws ssm get-parameter --with-decryption`), never baked into the image or committed anywhere. The private `ironclad-infra` repo's `modules/grafana` creates the SSM parameter shell only (`lifecycle { ignore_changes = [value] }`, same pattern as the Slack/Gmail credentials) — set the real password once after `terraform apply`:
 
 ```
 aws ssm put-parameter --name <grafana_admin_password_ssm_parameter_name output> --type SecureString --value '<a real password>' --overwrite
@@ -42,4 +42,4 @@ Without `GRAFANA_ADMIN_PASSWORD_SSM_PARAM` set, `entrypoint.sh` skips the SSM fe
 
 `buildspecs/buildspec-ci.yml` — validates every `dashboards/*.json` file is well-formed JSON, then confirms the image actually builds. No app-level tests (there's no application code) - meant to run on PRs/feature branch pushes.
 
-`buildspecs/buildspec-cd.yml` — builds the image, pushes `:latest` and `:<commit-sha>` to ECR, then forces an ECS redeployment on merges to this branch. Expects `ECR_REPO_URL`, `AWS_DEFAULT_REGION`, `AWS_ACCOUNT_ID`, `ECS_CLUSTER`, `ECS_SERVICE` as CodeBuild environment variables (wired up in the `infra` branch) — identical shape to `ai-gateway`'s CD, since this is a plain ECS Fargate service like every other app here.
+`buildspecs/buildspec-cd.yml` — builds the image, pushes `:latest` and `:<commit-sha>` to ECR, then forces an ECS redeployment on merges to this branch. Expects `ECR_REPO_URL`, `AWS_DEFAULT_REGION`, `AWS_ACCOUNT_ID`, `ECS_CLUSTER`, `ECS_SERVICE` as CodeBuild environment variables (wired up in the private `ironclad-infra` repo) — identical shape to `ai-gateway`'s CD, since this is a plain ECS Fargate service like every other app here.
