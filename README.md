@@ -1,5 +1,7 @@
 # Ironclad
 
+*Click the thumbnail (or [here](https://drive.google.com/file/d/1ixydfVVSazi4uajdS6pnbHVO0Dk-2V6b/view)) to watch on Google Drive.*
+
 Chat app with a streaming agent backend. Each part of the stack lives in its own branch; `master` is just this guide.
 
 ```
@@ -18,7 +20,6 @@ React + TS (frontend)  --POST /invoke-->  Go ai-gateway  --POST /invoke-->  Pyth
 
 Terraform for the AWS deployment lives in a separate **private** repo (`ironclad-infra`), not a branch here — see [AWS deployment](#aws-deployment) below. Everyone else's app code is public; only the infra (account IDs, resource layout) is kept private.
 
-*Click the thumbnail (or [here](https://drive.google.com/file/d/1ixydfVVSazi4uajdS6pnbHVO0Dk-2V6b/view)) to watch on Google Drive.*
 
 ```
 git clone --branch master https://github.com/smaliaquib/ironclad.git ironclad
