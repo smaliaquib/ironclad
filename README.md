@@ -2,6 +2,8 @@
 
 *Click [here](https://drive.google.com/file/d/1ixydfVVSazi4uajdS6pnbHVO0Dk-2V6b/view) to watch video on Google Drive.*
 
+# To see codes for applications change the github branches
+
 Chat app with a streaming agent backend. Each part of the stack lives in its own branch; `master` is just this guide.
 
 ```
