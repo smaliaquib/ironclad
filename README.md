@@ -12,6 +12,82 @@ React + TS (frontend)  --POST /invoke-->  Go ai-gateway  --POST /invoke-->  Pyth
 ```
 
 
+## Architecture
+
+```
+User
+  │
+  ▼
+Route53 (only if domain_name is set)
+  │
+  ▼
+CloudFront ── WAFv2 (managed rules + rate limit)
+  │
+  ├─ "/auth/*"  → Lambda@Edge (only if enable_auth) - answers directly, never
+  │               reaches the ALB: sets/refreshes/clears the session cookie
+  ├─ "/invoke*" → Lambda@Edge (only if enable_auth) - valid session cookie
+  │               required or 401 → ALB → ai-gateway ECS Fargate service
+  │                  ai-gateway: re-verifies the JWT itself, checks/records the
+  │                  per-user daily token limit in DynamoDB, forwards to agent
+  │                                              │
+  │                                              │ Cloud Map service discovery
+  │                                              │ (http://agent.<namespace>:8000)
+  │                                              ▼
+  │                                       agent ECS Fargate service (private, no ALB)
+  │                                         ├─ bedrock-agent-runtime:Retrieve, if a
+  │                                         │  knowledge base is configured (RAG - see below)
+  │                                         └─ MCP over HTTP, Cloud Map DNS ──▶ mcp-gateway
+  │                                            ECS Fargate service (private, no ALB) ──
+  │                                            lambda:Invoke ──▶ Lambda-backed MCP tools
+  ├─ "/grafana*" → passes through unconditionally → ALB → grafana ECS Fargate service
+  │                  (browsed directly by a person, not called by another service)
+  └─ "/", assets → passes through unconditionally → ALB → frontend ECS Fargate
+                     service (the SPA always loads; it shows Login/Register
+                     or Chat client-side based on a same-origin whoami check)
+```
+
+```
+┌─────────────────────────────────────────── VPC 10.0.0.0/16 ────────────────────────────────────────────┐
+│                                                                                                          │
+│  ┌──────────────── public subnets (one per AZ, az_count = 2) ────────────────┐                          │
+│  │   10.0.0.0/20, 10.0.16.0/20 - map_public_ip_on_launch = true              │                          │
+│  │                                                                            │                          │
+│  │   Internet Gateway          ALB (sg: alb)              NAT Gateway        │                          │
+│  │        │                     0.0.0.0/0:80 or                │             │                          │
+│  │        │                     CloudFront prefix list only     │             │                          │
+│  │        │                     (if restrict_alb_to_cloudfront) │             │                          │
+│  └────────┼─────────────────────────────┬───────────────────────┼─────────────┘                          │
+│           │                             │                       │ 0.0.0.0/0 (outbound only - image       │
+│           │                             │                       │ pulls, AWS API calls, Bedrock, etc.)   │
+│  ┌────────┼─────────────────────────────┼───────────────────────┼─────────────────────────────────────┐  │
+│  │        │   private subnets (one per AZ) - 10.0.128.0/20, 10.0.144.0/20 - no public IP                │  │
+│  │        │                             │                       │                                     │  │
+│  │        ▼                             ▼                       ▼                                     │  │
+│  │  frontend task (sg: frontend)  ai-gateway task (sg: ai-gateway)   grafana task (sg: grafana)         │  │
+│  │  ingress: alb sg only :80      ingress: alb sg only :8080         ingress: alb sg only :3000         │  │
+│  │                                        │                                                             │  │
+│  │                                        │ ingress: ai-gateway sg only :8000                           │  │
+│  │                                        ▼                                                             │  │
+│  │                                 agent task (sg: agent)                                               │  │
+│  │                                        │                                                             │  │
+│  │                                        │ ingress: agent sg only :8080                                │  │
+│  │                                        ▼                                                             │  │
+│  │                                 mcp-gateway task (sg: mcp-gateway)                                    │  │
+│  │                                        │                                                             │  │
+│  │  Every task security group: egress 0.0.0.0/0 (all ports/protocols), no ingress except the one rule    │  │
+│  │  above - each service reachable from exactly one named source, never from the internet directly.      │  │
+│  │  Private DNS namespace (Cloud Map, "<name_prefix>.local") lets agent/mcp-gateway find each other by    │  │
+│  │  name without a load balancer.                                                                        │  │
+│  └────────┼──────────────────────────────────────────────────────────────────────────────────────────────┘  │
+└───────────┼──────────────────────────────────────────────────────────────────────────────────────────────────┘
+            │ lambda:Invoke (over the AWS API, not a VPC network path)
+            ▼
+   12 MCP-tool Lambdas - NOT in this VPC (no vpc_config on any aws_lambda_function
+   here) - they run in AWS's own Lambda-managed network, reaching Slack/Gmail/
+   DuckDuckGo and SSM/KMS directly. No NAT gateway involved, no ENI cold start;
+   fine since none of them need to reach anything private-subnet-only.
+```
+
 ## Branches
 
 | Branch | What it is | Run |
