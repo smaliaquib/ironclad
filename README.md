@@ -87,6 +87,42 @@ CloudFront ── WAFv2 (managed rules + rate limit)
    DuckDuckGo and SSM/KMS directly. No NAT gateway involved, no ENI cold start;
    fine since none of them need to reach anything private-subnet-only.
 ```
+## Knowledge Base (RAG)
+
+Drop a document into the S3 bucket and it's automatically embedded and searchable by the chat - no separate "upload" feature in the app, just S3 directly:
+
+```
+S3 documents bucket
+  │  ObjectCreated:* event
+  ▼
+Lambda (ingestion trigger) ── bedrock:StartIngestionJob ──▶ Bedrock Knowledge Base
+                                                                  │ embeds via Titan Text
+                                                                  │ Embeddings v2, writes vectors
+                                                                  ▼
+                                                    OpenSearch Serverless collection
+                                                    (VECTORSEARCH, one vector index)
+
+agent ── bedrock-agent-runtime:Retrieve ──▶ same Knowledge Base (query only)
+```
+## MCP Gateway
+
+Three pieces, each in its own branch/repo, so the pattern that already works for `frontend`/`ai-gateway`/`agent` (app code owns its own CI/CD, this repo only creates AWS resource shells) extends to the gateway and its tools too:
+
+```
+agent (LangGraph create_react_agent, langchain-aws ChatBedrockConverse)
+      │  MCP over HTTP, Cloud Map DNS (MCP_GATEWAY_URL)
+      ▼
+mcp-gateway (ECS Fargate, Go, no ALB - private, Cloud Map only, same as agent)
+  POST /mcp - hand-rolled JSON-RPC 2.0: initialize / tools/list / tools/call
+      │
+      │ tools/list → reads the tool registry (SSM Parameter, cached ~60s)
+      │ tools/call → lambda:Invoke on the ARN the registry names for that tool
+      ▼
+Lambda: mcp-tool-echo / mcp-tool-get_time / mcp-tool-add_numbers (dummy tools)
+        mcp-tool-slack_post_message / mcp-tool-slack_read_history / mcp-tool-slack_list_channels
+        mcp-tool-gmail_search / mcp-tool-gmail_read / mcp-tool-gmail_send / mcp-tool-gmail_reply
+        mcp-tool-duckduckgo_search / mcp-tool-duckduckgo_fetch
+```
 
 ## Branches
 
